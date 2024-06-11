@@ -5,7 +5,6 @@ version = "2.3.2"
 tagline = "Import-Export X3D, Import VRML2"
 maintainer = "Community"
 type = "add-on"
-permissions = ["files"]
 tags = ["Import-Export"]
 blender_version_min = "4.2.0"
 license = ["SPDX:GPL-2.0-or-later"]
@@ -16,3 +15,6 @@ copyright = [
     "2024 Bastien Montagne",
     "2024 Seva Alekseyev",
 ]
+
+[permissions]
+files = "Required to access files for import/export"
