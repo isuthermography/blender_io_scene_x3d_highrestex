@@ -1985,6 +1985,11 @@ def importMesh_IndexedFaceSet(geom, ancestry):
             cco = [cco for (i, f) in enumerate(faces)
                        for j in f
                        for cco in rgb[color_index[i]]]
+        elif len(faces) > len(rgb):  # Static color per face without index, when all faces have the same color.
+            # Exported from SOLIDWORKS, see: `blender/blender-addons#105398`.
+            cco = [cco for (i, f) in enumerate(faces)
+                       for j in f
+                       for cco in rgb[0]]
         else:  # Color per face without index
             cco = [cco for (i, f) in enumerate(faces)
                        for j in f
