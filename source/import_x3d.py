@@ -8,6 +8,7 @@ DEBUG = False
 import os
 import shlex
 import math
+import re
 from math import sin, cos, pi
 from itertools import chain
 
@@ -2993,32 +2994,49 @@ def importShape_LoadAppearance(vrmlname, appr, ancestry, node, is_vcol):
 
 
 def appearance_LoadPixelTexture(pixelTexture, ancestry):
+    def extract_pixel_colors(data_string):
+        """
+        Read all hexadecimal pixel color values, distributed across multiple fields (mutliline)
+        """
+        # Use a regular expression to find all hexadecimal color values
+        hex_pattern = re.compile(r'0x[0-9a-fA-F]{6}')
+        pixel_colors = hex_pattern.findall(data_string)
+        # Convert hexadecimal color values to integers
+        pixel_colors = [int(color, 0) for color in pixel_colors]
+        return pixel_colors
+
     image = pixelTexture.getFieldAsArray('image', 0, ancestry)
+    # read width, height and plane_count value, assuming all are in one field called 'image' (singleline)
     (w, h, plane_count) = image[0:3]
     has_alpha = plane_count in {2, 4}
-    pixels = image[3:]
+    # get either hex color values (multiline) or regular color values (singleline)
+    pixels = extract_pixel_colors(str(pixelTexture)) # converting to string may not be ideal, but works
+    if len(pixels) == 0:
+        pixels = image[3:]
     if len(pixels) != w * h:
-        print("ImportX3D warning: pixel count in PixelTexture is off")
+        print(f"ImportX3D warning: pixel count in PixelTexture is off. Pixels: {len(pixels)}, Width: {w}, Height: {h}")
 
-    bpyima = bpy.data.images.new("PixelTexture", w, h, has_alpha, True)
+    bpyima = bpy.data.images.new("PixelTexture", w, h, alpha=has_alpha, float_buffer=True)
     if not has_alpha:
         bpyima.alpha_mode = 'NONE'
 
-    # Conditional above the loop, for performance
-    if plane_count == 3:  # RGB
-        bpyima.pixels = [(cco & 0xff) / 255 for pixel in pixels
-                         for cco in (pixel >> 16, pixel >> 8, pixel, 255)]
-    elif plane_count == 4:  # RGBA
-        bpyima.pixels = [(cco & 0xff) / 255 for pixel in pixels
-                         for cco
-                         in (pixel >> 24, pixel >> 16, pixel >> 8, pixel)]
-    elif plane_count == 1:  # Intensity - does Blender even support that?
-        bpyima.pixels = [(cco & 0xff) / 255 for pixel in pixels
-                         for cco in (pixel, pixel, pixel, 255)]
-    elif plane_count == 2:  # Intensity/alpha
-        bpyima.pixels = [(cco & 0xff) / 255 for pixel in pixels
-                         for cco
-                         in (pixel >> 8, pixel >> 8, pixel >> 8, pixel)]
+    # as some image textures may have no pixel data, ignore those
+    if len(pixels) != 0:
+        # Conditional above the loop, for performance
+        if plane_count == 3:  # RGB
+            bpyima.pixels = [(cco & 0xff) / 255 for pixel in pixels
+                            for cco in (pixel >> 16, pixel >> 8, pixel, 255)]
+        elif plane_count == 4:  # RGBA
+            bpyima.pixels = [(cco & 0xff) / 255 for pixel in pixels
+                            for cco
+                            in (pixel >> 24, pixel >> 16, pixel >> 8, pixel)]
+        elif plane_count == 1:  # Intensity - does Blender even support that?
+            bpyima.pixels = [(cco & 0xff) / 255 for pixel in pixels
+                            for cco in (pixel, pixel, pixel, 255)]
+        elif plane_count == 2:  # Intensity/alpha
+            bpyima.pixels = [(cco & 0xff) / 255 for pixel in pixels
+                            for cco
+                            in (pixel >> 8, pixel >> 8, pixel >> 8, pixel)]
     bpyima.update()
     return bpyima
 
