@@ -715,7 +715,7 @@ class vrmlNode(object):
         for v in f:
             if v != ',':
                 try:
-                    ret.append(float(v))
+                    ret.append(float(v.strip('"')))
                 except:
                     break  # quit of first non float, perhaps its a new field name on the same line? - if so we are going to ignore it :/ TODO
         # print(ret)
@@ -1218,6 +1218,11 @@ class vrmlNode(object):
                                 break  # assume
                             else:
                                 value += '\n' + l
+
+                    # append a final quote if it is not there, like it's e.g. the case with multiline javascripts (#101717)
+                    quote_count = l.count('"')
+                    if quote_count % 2:  # odd number?
+                        value += '"'
 
                     # use shlex so we get '"a b" "b v"' --> '"a b"', '"b v"'
                     value_all = shlex.split(value, posix=False)
