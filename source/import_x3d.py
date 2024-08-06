@@ -1884,11 +1884,11 @@ def importMesh_IndexedFaceSet(geom, ancestry):
 
     ccw = geom.getFieldAsBool('ccw', True, ancestry)
     coord = geom.getChildBySpec('Coordinate')
-    
+
     if coord is None:
         return None
-    
-    if coord.reference:
+
+    if coord.reference and coord.getRealNode().parsed:
         points = coord.getRealNode().parsed
         # We need unflattened coord array here, while
         # importMesh_ReadVertices uses flattened. Can't cache both :(
