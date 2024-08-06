@@ -1975,12 +1975,28 @@ def importMesh_IndexedFaceSet(geom, ancestry):
 
         color_per_vertex = geom.getFieldAsBool('colorPerVertex', True, ancestry)
         color_index = geom.getFieldAsArray('colorIndex', 0, ancestry)
+        has_color_index = len(color_index) != 0
+        has_valid_color_index = index.count(-1) == color_index.count(-1)
 
         d = bpymesh.vertex_colors.new().data
-        if color_per_vertex:
+
+        # rebuild a corrupted colorIndex field (assuming the end of face markers -1 are missing)
+        if has_color_index and not has_valid_color_index:
+            # remove all -1 beforehand to ensure clean working copy
+            color_index = [x for x in color_index if x != -1]
+            # copy all -1 from coordIndex to colorIndex
+            for i, v in enumerate(index):
+                if v == -1:
+                    color_index.insert(i, -1)
+
+        if color_per_vertex and has_color_index: # Color per vertex with index
             cco = [cco for f in processPerVertexIndex(color_index)
-                       for v in f
-                       for cco in rgb[v]]
+                   for v in f
+                   for cco in rgb[v]]
+        elif color_per_vertex: # Color per vertex without index
+            cco = [cco for f in faces
+                   for (i, v) in enumerate(f)
+                   for cco in rgb[i]]
         elif color_index:  # Color per face with index
             cco = [cco for (i, f) in enumerate(faces)
                        for j in f
