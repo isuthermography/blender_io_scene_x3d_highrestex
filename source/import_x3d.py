@@ -9,6 +9,7 @@ import os
 import shlex
 import math
 import re
+import mathutils
 from math import sin, cos, pi
 from itertools import chain
 
@@ -1964,14 +1965,21 @@ def importMesh_IndexedFaceSet(geom, ancestry):
         vectors = normals.getFieldAsArray('vector', 3, ancestry)
         normal_index = geom.getFieldAsArray('normalIndex', 0, ancestry)
         if per_vertex:
+            if len(normal_index) == 0:
+                normal_index = index
             co = [co for f in processPerVertexIndex(normal_index)
                      for v in f
-                     for co in vectors[v]]
+                     for co in mathutils.Vector(vectors[v]).normalized().to_tuple()]
             bpymesh.vertices.foreach_set("normal", co)
+
+            # Mesh must be validated before assigning normals, but validation might
+            # reorder corners. We must store normals in a temporary attribute
+            bpymesh.attributes.new("temp_custom_normals", 'FLOAT_VECTOR', 'CORNER')
+            bpymesh.attributes["temp_custom_normals"].data.foreach_set("vector", co)
         else:
             co = [co for (i, f) in enumerate(faces)
                      for j in f
-                     for co in vectors[normal_index[i] if normal_index else i]]
+                     for co in mathutils.Vector(vectors[normal_index[i] if normal_index else i]).normalized().to_tuple()]
             bpymesh.polygons.foreach_set("normal", co)
 
     # Apply vertex/face colors
@@ -1987,8 +1995,6 @@ def importMesh_IndexedFaceSet(geom, ancestry):
         color_index = geom.getFieldAsArray('colorIndex', 0, ancestry)
         has_color_index = len(color_index) != 0
         has_valid_color_index = index.count(-1) == color_index.count(-1)
-
-        d = bpymesh.vertex_colors.new().data
 
         # rebuild a corrupted colorIndex field (assuming the end of face markers -1 are missing)
         if has_color_index and not has_valid_color_index:
@@ -2020,7 +2026,15 @@ def importMesh_IndexedFaceSet(geom, ancestry):
             cco = [cco for (i, f) in enumerate(faces)
                        for j in f
                        for cco in rgb[i]]
-        d.foreach_set('color', cco)
+
+        if color_per_vertex:
+            # Mesh must be validated before assigning colors, but validation might
+            # reorder corners. We must store colors in a temporary attribute
+            bpymesh.attributes.new("temp_custom_colors", 'FLOAT_COLOR', 'CORNER')
+            bpymesh.attributes["temp_custom_colors"].data.foreach_set("color", cco)
+        else:
+            d = bpymesh.vertex_colors.new().data
+            d.foreach_set('color', cco)
 
     # Texture coordinates (UVs)
     tex_coord = geom.getChildBySpec('TextureCoordinate')
@@ -2070,7 +2084,37 @@ def importMesh_IndexedFaceSet(geom, ancestry):
 
     importMesh_ApplyTextureToLoops(bpymesh, loops)
 
-    bpymesh.validate()
+    bpymesh.validate(clean_customdata=False)
+
+    # Apply normals per vertex
+    if normals and per_vertex:
+        co2 = [0.0 for x in range(int(len(bpymesh.attributes["temp_custom_normals"].data)*3))]
+        bpymesh.attributes["temp_custom_normals"].data.foreach_get("vector", co2)
+        bpymesh.normals_split_custom_set(tuple(zip(*(iter(co2),) * 3)))
+        bpymesh.attributes.remove(bpymesh.attributes["temp_custom_normals"])
+
+    def linear_to_srgb(linear):
+        if linear <= 0.0031308:
+            return linear * 12.92
+        else:
+            return 1.055 * (linear ** (1.0 / 2.4)) - 0.055
+    
+    def srgb_to_linear(srgb_value):
+        if srgb_value <= 0.04045:
+            return srgb_value / 12.92
+        else:
+            return ((srgb_value + 0.055) / 1.055) ** 2.4
+
+    # Apply colors per vertex
+    if colors and color_per_vertex:
+        cco2 = [0.0 for x in range(int(len(bpymesh.attributes["temp_custom_colors"].data)*4))]
+        bpymesh.attributes["temp_custom_colors"].data.foreach_get("color", cco2)
+        # convert color spaces to account for api changes
+        cco2 = [srgb_to_linear(col_val) for col_val in cco2]
+        bpymesh.color_attributes.new('ColorPerCorner', 'FLOAT_COLOR', 'CORNER')
+        bpymesh.color_attributes["ColorPerCorner"].data.foreach_set("color", cco2)
+        bpymesh.attributes.remove(bpymesh.attributes["temp_custom_colors"])
+
     bpymesh.update()
     return bpymesh
 
@@ -2741,10 +2785,10 @@ def appearance_CreateMaterial(vrmlname, mat, ancestry, is_vcol):
         bpymat.blend_method = "BLEND"
         bpymat.shadow_method = "HASHED"
 
-    # NOTE - leaving this disabled for now
-    if False and is_vcol:
+    if is_vcol:
         node_vertex_color = bpymat.node_tree.nodes.new("ShaderNodeVertexColor")
         node_vertex_color.location = (-200, 300)
+        node_vertex_color.layer_name = "ColorPerCorner"
 
         bpymat.node_tree.links.new(
             bpymat_wrap.node_principled_bsdf.inputs["Base Color"],
@@ -3060,7 +3104,7 @@ def importShape_ProcessObject(
         # solid, as understood by the spec, is always true in Blender
         # solid=false, we don't support it yet.
         creaseAngle = geom.getFieldAsFloat('creaseAngle', None, ancestry)
-        if creaseAngle is not None:
+        if creaseAngle is not None and not bpydata.has_custom_normals:
             bpydata.set_sharp_from_angle(angle=creaseAngle)
         else:
             bpydata.polygons.foreach_set("use_smooth", [False] * len(bpydata.polygons))
