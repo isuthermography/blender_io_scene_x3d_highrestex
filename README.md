@@ -1,7 +1,7 @@
 # Web3D X3D/VRML2 format Add-on
 
 ## Features
-see [Web3D X3D/VRML2 Documentation](https://docs.blender.org/manual/en/4.1//addons/import_export/scene_x3d.html)
+see [Web3D X3D/VRML2 Documentation](https://projects.blender.org/extensions/io_scene_x3d/wiki)
 
 ### Import file formats
 - .x3d
@@ -34,4 +34,8 @@ Original authors: Campbell Barton, Bart, Bastien Montagne, Seva Alekseyev
 ## Specifications
 For deeper understanding of both file formats supported by this extension, refer to:
 - [VRML (.wrl)](https://graphcomp.com/info/specs/sgi/vrml/)
-- [X3D (.x3d)](https://www.web3d.org/specifications/)
+- [X3D (.x3d)](https://www.web3d.org/specifications/) and [X3D V3.3(.x3d)](https://www.web3d.org/documents/specifications/19775-1/V3.3/index.html)
+
+Comparison software:
+- [FreeWRL](https://freewrl.sourceforge.io/)
+- [x3dom](https://www.x3dom.org/)
