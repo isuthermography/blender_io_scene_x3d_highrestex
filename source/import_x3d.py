@@ -1600,8 +1600,32 @@ def getFinalMatrix(node, mtx, ancestry, global_matrix):
     return mtx
 
 
+def linear_to_srgb(linear):
+    """Converts a linear color value to srgb color space"""
+    if linear <= 0.0031308:
+        return linear * 12.92
+    else:
+        return 1.055 * (linear ** (1.0 / 2.4)) - 0.055
+
+def srgb_to_linear(srgb_value):
+    """Converts a srgb color value to linear space"""
+    if srgb_value <= 0.04045:
+        return srgb_value / 12.92
+    else:
+        return ((srgb_value + 0.055) / 1.055) ** 2.4
+
+
 # -----------------------------------------------------------------------------------
 # Mesh import utilities
+
+def set_new_float_color_attribute(bpymesh, color_data, name: str = "ColorPerCorner", convert_to_linear: bool = True):
+    """Uses the new blender api to apply colors to a mesh as vertex colors (domain face corner)"""
+    if (convert_to_linear):
+        # convert color spaces to account for api changes from legacy to newer api
+        color_data = [srgb_to_linear(col_val) for col_val in color_data]
+    # add new color attribute
+    bpymesh.color_attributes.new(name, 'FLOAT_COLOR', 'CORNER')
+    bpymesh.color_attributes[name].data.foreach_set("color", color_data)
 
 # Assumes that the mesh has polygons.
 def importMesh_ApplyColors(bpymesh, geom, ancestry):
@@ -1612,7 +1636,6 @@ def importMesh_ApplyColors(bpymesh, geom, ancestry):
         else:
             # Array of arrays; no need to flatten
             rgb = [c + [1.0] for c in colors.getFieldAsArray('color', 3, ancestry)]
-        lcol_layer = bpymesh.vertex_colors.new()
 
         if len(rgb) == len(bpymesh.vertices):
             rgb = [rgb[l.vertex_index] for l in bpymesh.loops]
@@ -1626,7 +1649,7 @@ def importMesh_ApplyColors(bpymesh, geom, ancestry):
             )
             return
 
-        lcol_layer.data.foreach_set("color", rgb)
+        set_new_float_color_attribute(bpymesh, rgb)
 
 
 # Assumes that the vertices have not been rearranged compared to the
@@ -2030,11 +2053,9 @@ def importMesh_IndexedFaceSet(geom, ancestry):
         if color_per_vertex:
             # Mesh must be validated before assigning colors, but validation might
             # reorder corners. We must store colors in a temporary attribute
-            bpymesh.attributes.new("temp_custom_colors", 'FLOAT_COLOR', 'CORNER')
-            bpymesh.attributes["temp_custom_colors"].data.foreach_set("color", cco)
+            set_new_float_color_attribute(bpymesh, cco, name="temp_custom_colors")
         else:
-            d = bpymesh.vertex_colors.new().data
-            d.foreach_set('color', cco)
+            set_new_float_color_attribute(bpymesh, cco)
 
     # Texture coordinates (UVs)
     tex_coord = geom.getChildBySpec('TextureCoordinate')
@@ -2093,26 +2114,11 @@ def importMesh_IndexedFaceSet(geom, ancestry):
         bpymesh.normals_split_custom_set(tuple(zip(*(iter(co2),) * 3)))
         bpymesh.attributes.remove(bpymesh.attributes["temp_custom_normals"])
 
-    def linear_to_srgb(linear):
-        if linear <= 0.0031308:
-            return linear * 12.92
-        else:
-            return 1.055 * (linear ** (1.0 / 2.4)) - 0.055
-    
-    def srgb_to_linear(srgb_value):
-        if srgb_value <= 0.04045:
-            return srgb_value / 12.92
-        else:
-            return ((srgb_value + 0.055) / 1.055) ** 2.4
-
     # Apply colors per vertex
     if colors and color_per_vertex:
-        cco2 = [0.0 for x in range(int(len(bpymesh.attributes["temp_custom_colors"].data)*4))]
+        cco2 = [0.0 for x in range(int(len(bpymesh.attributes["temp_custom_colors"].data) * 4))]
         bpymesh.attributes["temp_custom_colors"].data.foreach_get("color", cco2)
-        # convert color spaces to account for api changes
-        cco2 = [srgb_to_linear(col_val) for col_val in cco2]
-        bpymesh.color_attributes.new('ColorPerCorner', 'FLOAT_COLOR', 'CORNER')
-        bpymesh.color_attributes["ColorPerCorner"].data.foreach_set("color", cco2)
+        set_new_float_color_attribute(bpymesh, cco2)
         bpymesh.attributes.remove(bpymesh.attributes["temp_custom_colors"])
 
     bpymesh.update()
@@ -2162,11 +2168,11 @@ def importMesh_ElevationGrid(geom, ancestry):
         else:
             rgb = colors.getFieldAsArray('color', 3, ancestry)
 
-        tc = bpymesh.vertex_colors.new().data
+        # TODO: this can probably be simplified
         if geom.getFieldAsBool('colorPerVertex', True, ancestry):
             # Per-vertex coloring
             # Note the 2/4 flip here
-            tc.foreach_set("color",
+            set_new_float_color_attribute(bpymesh,
                            [c for x in range(x_dim - 1)
                               for z in range(z_dim - 1)
                               for rgb_idx in (z * x_dim + x,
@@ -2175,7 +2181,7 @@ def importMesh_ElevationGrid(geom, ancestry):
                                               (z + 1) * x_dim + x if ccw else z * x_dim + x + 1)
                               for c in rgb[rgb_idx]])
         else:  # Coloring per face
-            tc.foreach_set("color",
+            set_new_float_color_attribute(bpymesh,
                            [c for x in range(x_dim - 1)
                               for z in range(z_dim - 1)
                               for rgb_idx in (z * (x_dim - 1) + x,) * 4
