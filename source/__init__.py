@@ -37,11 +37,34 @@ class ImportX3D(bpy.types.Operator, ImportHelper):
     filename_ext = ".x3d"
     filter_glob: StringProperty(default="*.x3d;*.wrl", options={'HIDDEN'})
 
+    file_unit: EnumProperty(
+            name="File Unit",
+            items=(('M', "Meter", "Meter is the default unit of vrml (wrl) files. Most programs assume the objects to be defined in meters as per specification"),
+                   ('DM', "Decimeter", ""),
+                   ('CM', "Centimeter", ""),
+                   ('MM', "Milimeter", ""),
+                   ('IN', "Inch", ""),
+                   ('CUSTOM', "CUSTOM", "Use the scale factor provided below"),
+                   ),
+            description="Unit used in the input file",
+            default='M',
+            )
+
+    global_scale: FloatProperty(
+            name="Scale",
+            min=0.001, max=1000.0,
+            default=1.0,
+            precision=4,
+            step=1.0,
+            description="Scale value used when 'File Unit' is set to 'CUSTOM'",
+            )
+
     def execute(self, context):
         from . import import_x3d
 
         keywords = self.as_keywords(ignore=("axis_forward",
                                             "axis_up",
+                                            "file_unit",
                                             "filter_glob",
                                             ))
         global_matrix = axis_conversion(from_forward=self.axis_forward,
@@ -248,6 +271,15 @@ class X3D_PT_import_transform(bpy.types.Panel):
         sfile = context.space_data
         operator = sfile.active_operator
 
+        layout.prop(operator, "file_unit")
+        
+        sub = layout.row()
+        sub.enabled = operator.file_unit == 'CUSTOM'
+
+        sub.prop(operator, "global_scale")
+        UNITS_FACTOR = {'M': 1.0, 'DM': 0.1, 'CM': 0.01, 'MM': 0.001, 'IN': 0.0254}
+        if operator.file_unit != 'CUSTOM':
+            operator.global_scale = UNITS_FACTOR[operator.file_unit]
         layout.prop(operator, "axis_forward")
         layout.prop(operator, "axis_up")
 

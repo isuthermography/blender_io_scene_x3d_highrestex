@@ -15,6 +15,7 @@ from itertools import chain
 
 texture_cache = {}
 material_cache = {}
+conversion_scale = 1.0
 
 EPSILON = 0.0000001  # Very crude.
 
@@ -681,7 +682,7 @@ class vrmlNode(object):
             print('\tvalue "%s" could not be used as an int for field "%s"' % (f[0], field))
             return default
 
-    def getFieldAsFloat(self, field, default, ancestry):
+    def getFieldAsFloat(self, field, default, ancestry, scale_factor=1.0):
         self_real = self.getRealNode()  # in case we're an instance
 
         f = self_real.getFieldName(field, ancestry)
@@ -695,12 +696,12 @@ class vrmlNode(object):
             return default
 
         try:
-            return float(f[0])
+            return float(f[0])*scale_factor
         except:
             print('\tvalue "%s" could not be used as a float for field "%s"' % (f[0], field))
             return default
 
-    def getFieldAsFloatTuple(self, field, default, ancestry):
+    def getFieldAsFloatTuple(self, field, default, ancestry, scale_factor=1.0):
         self_real = self.getRealNode()  # in case we're an instance
 
         f = self_real.getFieldName(field, ancestry)
@@ -716,7 +717,7 @@ class vrmlNode(object):
         for v in f:
             if v != ',':
                 try:
-                    ret.append(float(v.strip('"')))
+                    ret.append(float(v.strip('"'))*scale_factor)
                 except:
                     break  # quit of first non float, perhaps its a new field name on the same line? - if so we are going to ignore it :/ TODO
         # print(ret)
@@ -774,7 +775,7 @@ class vrmlNode(object):
             print('\tvalue "%s" could not be used as a string for field "%s"' % (f[0], field))
             return default
 
-    def getFieldAsArray(self, field, group, ancestry):
+    def getFieldAsArray(self, field, group, ancestry, scale_factor=1.0):
         """
         For this parser arrays are children
         """
@@ -826,9 +827,16 @@ class vrmlNode(object):
                 flat = False
                 break
 
+        apply_scale = scale_factor != 1.0
+
         # make a flat array
         if flat:
-            flat_array = array_data  # we are already flat.
+            if apply_scale:
+                # applying scale
+                flat_array = [n*scale_factor for n in array_data] # scaling the data 
+            else:
+                flat_array = array_data  # we are already flat.
+        
         else:
             flat_array = []
 
@@ -837,6 +845,10 @@ class vrmlNode(object):
                     if type(item) == list:
                         extend_flat(item)
                     else:
+                        if apply_scale:
+                            # applying scale
+                            item *= scale_factor
+
                         flat_array.append(item)
 
             extend_flat(array_data)
@@ -1498,11 +1510,11 @@ def translateScale(sca):
 
 
 def translateTransform(node, ancestry):
-    cent = node.getFieldAsFloatTuple('center', None, ancestry)  # (0.0, 0.0, 0.0)
+    cent = node.getFieldAsFloatTuple('center', None, ancestry, conversion_scale)  # (0.0, 0.0, 0.0)
     rot = node.getFieldAsFloatTuple('rotation', None, ancestry)  # (0.0, 0.0, 1.0, 0.0)
     sca = node.getFieldAsFloatTuple('scale', None, ancestry)  # (1.0, 1.0, 1.0)
     scaori = node.getFieldAsFloatTuple('scaleOrientation', None, ancestry)  # (0.0, 0.0, 1.0, 0.0)
-    tx = node.getFieldAsFloatTuple('translation', None, ancestry)  # (0.0, 0.0, 0.0)
+    tx = node.getFieldAsFloatTuple('translation', None, ancestry, conversion_scale)  # (0.0, 0.0, 0.0)
 
     if cent:
         cent_mat = Matrix.Translation(cent)
@@ -1542,10 +1554,10 @@ def translateTransform(node, ancestry):
 
 
 def translateTexTransform(node, ancestry):
-    cent = node.getFieldAsFloatTuple('center', None, ancestry)  # (0.0, 0.0)
+    cent = node.getFieldAsFloatTuple('center', None, ancestry, conversion_scale)  # (0.0, 0.0)
     rot = node.getFieldAsFloat('rotation', None, ancestry)  # 0.0
     sca = node.getFieldAsFloatTuple('scale', None, ancestry)  # (1.0, 1.0)
-    tx = node.getFieldAsFloatTuple('translation', None, ancestry)  # (0.0, 0.0)
+    tx = node.getFieldAsFloatTuple('translation', None, ancestry, conversion_scale)  # (0.0, 0.0)
 
     if cent:
         # cent is at a corner by default
@@ -1682,7 +1694,7 @@ def importMesh_ReadVertices(bpymesh, geom, ancestry):
     # IndexedFaceSet presumes a 2D one.
     # The case for caching is stronger over there.
     coord = geom.getChildBySpec('Coordinate')
-    points = coord.getFieldAsArray('point', 0, ancestry)
+    points = coord.getFieldAsArray('point', 0, ancestry, conversion_scale)
     bpymesh.vertices.add(len(points) // 3)
     bpymesh.vertices.foreach_set("co", points)
 
@@ -1919,7 +1931,7 @@ def importMesh_IndexedFaceSet(geom, ancestry):
         # TODO: resolve that somehow, so that vertex set can be effectively
         # reused between different mesh types?
     else:
-        points = coord.getFieldAsArray('point', 3, ancestry)
+        points = coord.getFieldAsArray('point', 3, ancestry, conversion_scale)
         if coord.canHaveReferences():
             coord.parsed = points
     index = geom.getFieldAsArray('coordIndex', 0, ancestry)
@@ -2430,7 +2442,7 @@ def importMesh_LineSet(geom, ancestry):
     # TODO: line display properties are ignored
     # Per-vertex color is ignored
     coord = geom.getChildBySpec('Coordinate')
-    src_points = coord.getFieldAsArray('point', 3, ancestry)
+    src_points = coord.getFieldAsArray('point', 3, ancestry, conversion_scale)
     # Array of 3; Blender needs arrays of 4
     bpycurve = bpy.data.curves.new("LineSet", 'CURVE')
     bpycurve.dimensions = '3D'
@@ -2456,7 +2468,7 @@ def importMesh_IndexedLineSet(geom, ancestry):
     # coord = geom.getChildByName('coord') # 'Coordinate'
     coord = geom.getChildBySpec('Coordinate')  # works for x3d and vrml
     if coord:
-        points = coord.getFieldAsArray('point', 3, ancestry)
+        points = coord.getFieldAsArray('point', 3, ancestry, conversion_scale)
     else:
         points = []
 
@@ -2499,7 +2511,7 @@ def importMesh_PointSet(geom, ancestry):
     # VRML not x3d
     coord = geom.getChildBySpec('Coordinate')  # works for x3d and vrml
     if coord:
-        points = coord.getFieldAsArray('point', 3, ancestry)
+        points = coord.getFieldAsArray('point', 3, ancestry, conversion_scale)
     else:
         points = []
 
@@ -2529,7 +2541,7 @@ def importMesh_Sphere(geom, ancestry):
     # solid is ignored.
     # Extra field 'subdivision="n m"' attribute, specifying how many
     # rings and segments to use (X3DOM).
-    r = geom.getFieldAsFloat('radius', 0.5, ancestry)
+    r = geom.getFieldAsFloat('radius', 0.5*conversion_scale, ancestry, conversion_scale)
     subdiv = geom.getFieldAsArray('subdivision', 0, ancestry)
     if subdiv:
         if len(subdiv) == 1:
@@ -2624,8 +2636,8 @@ def importMesh_Cylinder(geom, ancestry):
     # solid is ignored
     # no ccw in this element
     # Extra parameter subdivision="n" - how many faces to use
-    radius = geom.getFieldAsFloat('radius', 1.0, ancestry)
-    height = geom.getFieldAsFloat('height', 2, ancestry)
+    radius = geom.getFieldAsFloat('radius', 1.0*conversion_scale, ancestry, conversion_scale)
+    height = geom.getFieldAsFloat('height', 2.0*conversion_scale, ancestry, conversion_scale)
     bottom = geom.getFieldAsBool('bottom', True, ancestry)
     side = geom.getFieldAsBool('side', True, ancestry)
     top = geom.getFieldAsBool('top', True, ancestry)
@@ -2682,8 +2694,8 @@ def importMesh_Cone(geom, ancestry):
     # Solid ignored
     # Extra parameter subdivision="n" - how many faces to use
     n = geom.getFieldAsInt('subdivision', GLOBALS['CIRCLE_DETAIL'], ancestry)
-    radius = geom.getFieldAsFloat('bottomRadius', 1.0, ancestry)
-    height = geom.getFieldAsFloat('height', 2, ancestry)
+    radius = geom.getFieldAsFloat('bottomRadius', 1.0*conversion_scale, ancestry, conversion_scale)
+    height = geom.getFieldAsFloat('height', 2.0*conversion_scale, ancestry, conversion_scale)
     bottom = geom.getFieldAsBool('bottom', True, ancestry)
     side = geom.getFieldAsBool('side', True, ancestry)
 
@@ -2722,7 +2734,7 @@ def importMesh_Cone(geom, ancestry):
 def importMesh_Box(geom, ancestry):
     # Solid is ignored
     # No ccw in this element
-    (dx, dy, dz) = geom.getFieldAsFloatTuple('size', (2.0, 2.0, 2.0), ancestry)
+    (dx, dy, dz) = geom.getFieldAsFloatTuple('size', (2.0*conversion_scale, 2.0*conversion_scale, 2.0*conversion_scale), ancestry, conversion_scale)
     dx /= 2
     dy /= 2
     dz /= 2
@@ -3275,9 +3287,9 @@ def importLamp_PointLight(node, ancestry):
     # attenuation = node.getFieldAsFloatTuple('attenuation', (1.0, 0.0, 0.0), ancestry) # TODO
     color = node.getFieldAsFloatTuple('color', (1.0, 1.0, 1.0), ancestry)
     intensity = node.getFieldAsFloat('intensity', 1.0, ancestry)  # max is documented to be 1.0 but some files have higher.
-    location = node.getFieldAsFloatTuple('location', (0.0, 0.0, 0.0), ancestry)
+    location = node.getFieldAsFloatTuple('location', (0.0, 0.0, 0.0), ancestry, conversion_scale)
     # is_on = node.getFieldAsBool('on', True, ancestry) # TODO
-    radius = node.getFieldAsFloat('radius', 100.0, ancestry)
+    radius = node.getFieldAsFloat('radius', 100.0, ancestry, conversion_scale)
 
     bpylamp = bpy.data.lights.new(vrmlname, 'POINT')
     bpylamp.energy = intensity
@@ -3324,9 +3336,9 @@ def importLamp_SpotLight(node, ancestry):
     cutOffAngle = node.getFieldAsFloat('cutOffAngle', 0.785398, ancestry) * 2.0  # max is documented to be 1.0 but some files have higher.
     direction = node.getFieldAsFloatTuple('direction', (0.0, 0.0, -1.0), ancestry)
     intensity = node.getFieldAsFloat('intensity', 1.0, ancestry)  # max is documented to be 1.0 but some files have higher.
-    location = node.getFieldAsFloatTuple('location', (0.0, 0.0, 0.0), ancestry)
+    location = node.getFieldAsFloatTuple('location', (0.0, 0.0, 0.0), ancestry, conversion_scale)
     # is_on = node.getFieldAsBool('on', True, ancestry) # TODO
-    radius = node.getFieldAsFloat('radius', 100.0, ancestry)
+    radius = node.getFieldAsFloat('radius', 100.0, ancestry, conversion_scale)
 
     bpylamp = bpy.data.lights.new(vrmlname, 'SPOT')
     bpylamp.energy = intensity
@@ -3378,7 +3390,7 @@ def importViewpoint(bpycollection, node, ancestry, global_matrix):
     fieldOfView = node.getFieldAsFloat('fieldOfView', 0.785398, ancestry)  # max is documented to be 1.0 but some files have higher.
     # jump = node.getFieldAsBool('jump', True, ancestry)
     orientation = node.getFieldAsFloatTuple('orientation', (0.0, 0.0, 1.0, 0.0), ancestry)
-    position = node.getFieldAsFloatTuple('position', (0.0, 0.0, 0.0), ancestry)
+    position = node.getFieldAsFloatTuple('position', (0.0, 0.0, 0.0), ancestry, conversion_scale)
     description = node.getFieldAsString('description', '', ancestry)
 
     bpycam = bpy.data.cameras.new(name)
@@ -3590,12 +3602,17 @@ def load_web3d(
         *,
         PREF_FLAT=False,
         PREF_CIRCLE_DIV=16,
+        file_unit='M',
+        global_scale=1.0,
         global_matrix=None,
         HELPER_FUNC=None
         ):
 
     # Used when adding blender primitives
     GLOBALS['CIRCLE_DETAIL'] = PREF_CIRCLE_DIV
+    
+    global conversion_scale
+    conversion_scale = global_scale
 
     # NOTE - reset material cache
     # (otherwise we might get "StructRNA of type Material has been removed" errors)
@@ -3733,6 +3750,7 @@ def load_with_profiler(
 def load(context,
          filepath,
          *,
+         global_scale=1.0,
          global_matrix=None
          ):
 
@@ -3740,6 +3758,7 @@ def load(context,
     load_web3d(context, filepath,
                PREF_FLAT=True,
                PREF_CIRCLE_DIV=16,
+               global_scale=global_scale,
                global_matrix=global_matrix,
                )
 
