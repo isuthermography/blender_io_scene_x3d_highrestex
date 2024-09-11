@@ -132,7 +132,16 @@ class X3D_PT_export_transform(bpy.types.Panel):
         sfile = context.space_data
         operator = sfile.active_operator
 
-        layout.prop(operator, "global_scale")
+        layout.prop(operator, "file_unit")
+        
+        sub = layout.row()
+        sub.enabled = operator.file_unit == 'CUSTOM'
+
+        sub.prop(operator, "global_scale")
+        UNITS_FACTOR = {'M': 1.0, 'DM': 10.0, 'CM': 100.0, 'MM': 1000.0, 'IN': 39.37007874}
+        if operator.file_unit != 'CUSTOM':
+            operator.global_scale = UNITS_FACTOR[operator.file_unit]
+
         layout.prop(operator, "axis_forward")
         layout.prop(operator, "axis_up")
 
@@ -220,10 +229,26 @@ class ExportX3D(bpy.types.Operator, ExportHelper):
             default=False,
             )
 
+    file_unit: EnumProperty(
+            name="File Unit",
+            items=(('M', "Meter", "Meter is the default unit of vrml (wrl) files. Most programs assume the objects to be defined in meters as per specification"),
+                   ('DM', "Decimeter", ""),
+                   ('CM', "Centimeter", ""),
+                   ('MM', "Milimeter", ""),
+                   ('IN', "Inch", ""),
+                   ('CUSTOM', "CUSTOM", "Use the scale factor provided below"),
+                   ),
+            description="Unit used in the input file",
+            default='M',
+            )
+
     global_scale: FloatProperty(
             name="Scale",
             min=0.01, max=1000.0,
             default=1.0,
+            precision=4,
+            step=1.0,
+            description="Scale value used when 'File Unit' is set to 'CUSTOM'",
             )
 
     path_mode: path_reference_mode
@@ -235,13 +260,14 @@ class ExportX3D(bpy.types.Operator, ExportHelper):
 
         keywords = self.as_keywords(ignore=("axis_forward",
                                             "axis_up",
+                                            "file_unit",
                                             "global_scale",
                                             "check_existing",
                                             "filter_glob",
                                             ))
         global_matrix = axis_conversion(to_forward=self.axis_forward,
                                         to_up=self.axis_up,
-                                        ).to_4x4() @ Matrix.Scale(self.global_scale, 4)
+                                        ).to_4x4() @ Matrix.Scale(1.0/0.0254 if self.file_unit == 'IN' else self.global_scale, 4)
         keywords["global_matrix"] = global_matrix
 
         return export_x3d.save(context, **keywords)
