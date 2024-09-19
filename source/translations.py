@@ -8,7 +8,12 @@ def get_language():
     return translations.get(current_language, translations["en_US"])
 
 def get_translation():
-    """Define the translation dictionary."""
+    """Define the translation dictionary for various languages."""
+    ################################################# IMPORTANT ########################################################
+    # Rememeber when changing the english value to also either update or remove corresponding entry from the other languages.
+    # Otherwise we will get inconsitencies across the languages (and we don't want that, do we?)
+    # Whilst translation is optiomal, deletion is fine as well, then english will get used as fallback.
+    ################################################# IMPORTANT ########################################################
     return {
         "en_US": {
             "import": "Import X3D/VRML2",
