@@ -4,6 +4,7 @@
 
 if "bpy" in locals():
     import importlib
+
     if "import_x3d" in locals():
         importlib.reload(import_x3d)
     if "export_x3d" in locals():
@@ -11,53 +12,56 @@ if "bpy" in locals():
 
 import bpy
 from bpy.props import (
-        BoolProperty,
-        EnumProperty,
-        FloatProperty,
-        StringProperty,
-        )
+    BoolProperty,
+    EnumProperty,
+    FloatProperty,
+    StringProperty,
+)
 from bpy_extras.io_utils import (
-        ImportHelper,
-        ExportHelper,
-        orientation_helper,
-        axis_conversion,
-        path_reference_mode,
-        )
+    ImportHelper,
+    ExportHelper,
+    orientation_helper,
+    axis_conversion,
+    path_reference_mode,
+)
+from .translations import get_language
 
 blender_version = bpy.app.version
 blender_version_higher_279 = blender_version[0] > 2 or (blender_version[0] == 2 and blender_version[1] >= 79)
+
+translation = get_language()
 
 @orientation_helper(axis_forward='Z', axis_up='Y')
 class ImportX3D(bpy.types.Operator, ImportHelper):
     """Import an X3D or VRML2 file"""
     bl_idname = "import_scene.x3d"
-    bl_label = "Import X3D/VRML2"
+    bl_label = translation["import"]
     bl_options = {'PRESET', 'UNDO'}
 
     filename_ext = ".x3d"
     filter_glob: StringProperty(default="*.x3d;*.wrl", options={'HIDDEN'})
 
     file_unit: EnumProperty(
-            name="File Unit",
-            items=(('M', "Meter", "Meter is the default unit of vrml (wrl) files. Most programs assume the objects to be defined in meters as per specification"),
-                   ('DM', "Decimeter", ""),
-                   ('CM', "Centimeter", ""),
-                   ('MM', "Milimeter", ""),
-                   ('IN', "Inch", ""),
-                   ('CUSTOM', "CUSTOM", "Use the scale factor provided below"),
-                   ),
-            description="Unit used in the input file",
-            default='M',
-            )
+        name=translation["file_unit"],
+        items=(('M', translation["meter"], translation["meter_description"]),
+               ('DM', translation["decimeter"], translation["decimeter_description"]),
+               ('CM', translation["centimeter"], translation["centimeter_description"]),
+               ('MM', translation["milimeter"], translation["milimeter_description"]),
+               ('IN', translation["inch"], translation["inch_description"]),
+               ('CUSTOM', translation["custom"], translation["custom_description"]),
+               ),
+        description=translation["file_unit_description"],
+        default='M',
+    )
 
     global_scale: FloatProperty(
-            name="Scale",
-            min=0.001, max=1000.0,
-            default=1.0,
-            precision=4,
-            step=1.0,
-            description="Scale value used when 'File Unit' is set to 'CUSTOM'",
-            )
+        name=translation["scale"],
+        min=0.001, max=1000.0,
+        default=1.0,
+        precision=4,
+        step=1.0,
+        description=translation["scale_description"],
+    )
 
     def execute(self, context):
         from . import import_x3d
@@ -133,7 +137,7 @@ class X3D_PT_export_transform(bpy.types.Panel):
         operator = sfile.active_operator
 
         layout.prop(operator, "file_unit")
-        
+
         sub = layout.row()
         sub.enabled = operator.file_unit == 'CUSTOM'
 
@@ -177,79 +181,74 @@ class X3D_PT_export_geometry(bpy.types.Panel):
 class ExportX3D(bpy.types.Operator, ExportHelper):
     """Export selection to Extensible 3D file (.x3d)"""
     bl_idname = "export_scene.x3d"
-    bl_label = 'Export X3D'
+    bl_label = translation["export"]
     bl_options = {'PRESET'}
 
     filename_ext = ".x3d"
     filter_glob: StringProperty(default="*.x3d", options={'HIDDEN'})
 
     use_selection: BoolProperty(
-            name="Selection Only",
-            description="Export selected objects only",
-            default=False,
-            )
+        name=translation["selection_only"],
+        description=translation["selection_only_description"],
+        default=False,
+    )
     use_mesh_modifiers: BoolProperty(
-            name="Apply Modifiers",
-            description="Use transformed mesh data from each object",
-            default=True,
-            )
+        name=translation["apply_modifiers"],
+        description=translation["apply_modifiers_description"],
+        default=True,
+    )
     use_triangulate: BoolProperty(
-            name="Triangulate",
-            description="Write quads into 'IndexedTriangleSet'",
-            default=False,
-            )
+        name=translation["triangulate"],
+        description=translation["triangulate_description"],
+        default=False,
+    )
     use_normals: BoolProperty(
-            name="Normals",
-            description="Write normals with geometry",
-            default=False,
-            )
+        name=translation["normals"],
+        description=translation["normals_description"],
+        default=False,
+    )
     use_compress: BoolProperty(
-            name="Compress",
-            description="Compress the exported file",
-            default=False,
-            )
+        name=translation["compress"],
+        description=translation["compress_description"],
+        default=False,
+    )
     use_hierarchy: BoolProperty(
-            name="Hierarchy",
-            description="Export parent child relationships",
-            default=True,
-            )
+        name=translation["hierarchy"],
+        description=translation["hierarchy_description"],
+        default=True,
+    )
     name_decorations: BoolProperty(
-            name="Name decorations",
-            description=("Add prefixes to the names of exported nodes to "
-                         "indicate their type"),
-            default=True,
-            )
+        name=translation["name_decorations"],
+        description=translation["name_decorations_description"],
+        default=True,
+    )
     use_h3d: BoolProperty(
-            name="H3D Extensions",
-            description="Export shaders for H3D" +
-                        ".\nWARNING: This feature is disabled for blender versions higher than 2.79 "
-                        "as the needed API method for exporting shaders got removed from blender. "
-                        "\nThis feature may get fixed eventually, but no support expected"
-                        if blender_version_higher_279 else "",
-            default=False,
-            )
+        name=translation["h3d_extensions"],
+        description=translation["h3d_extensions_description"],
+        default=False,
+    )
 
     file_unit: EnumProperty(
-            name="File Unit",
-            items=(('M', "Meter", "Meter is the default unit of vrml (wrl) files. Most programs assume the objects to be defined in meters as per specification"),
-                   ('DM', "Decimeter", ""),
-                   ('CM', "Centimeter", ""),
-                   ('MM', "Milimeter", ""),
-                   ('IN', "Inch", ""),
-                   ('CUSTOM', "CUSTOM", "Use the scale factor provided below"),
-                   ),
-            description="Unit used in the input file",
-            default='M',
-            )
+        name=translation["file_unit"],
+        items=(('M', translation["meter"], translation["meter_description"]),
+               ('DM', translation["decimeter"], translation["decimeter_description"]),
+               ('CM', translation["centimeter"], translation["centimeter_description"]),
+               ('MM', translation["milimeter"], translation["milimeter_description"]),
+               ('IN', translation["inch"], translation["inch_description"]),
+               ('CUSTOM', translation["custom"], translation["custom_description"]),
+               ),
+        description=translation["file_unit_description"],
+        default='M',
+    )
 
     global_scale: FloatProperty(
-            name="Scale",
-            min=0.01, max=1000.0,
-            default=1.0,
-            precision=4,
-            step=1.0,
-            description="Scale value used when 'File Unit' is set to 'CUSTOM'",
-            )
+        name="Scale",
+        min=0.01, max=1000.0,
+        default=1.0,
+        precision=4,
+        step=1.0,
+        description=translation["scale_description"],
+    )
 
     path_mode: path_reference_mode
 
@@ -267,7 +266,8 @@ class ExportX3D(bpy.types.Operator, ExportHelper):
                                             ))
         global_matrix = axis_conversion(to_forward=self.axis_forward,
                                         to_up=self.axis_up,
-                                        ).to_4x4() @ Matrix.Scale(1.0/0.0254 if self.file_unit == 'IN' else self.global_scale, 4)
+                                        ).to_4x4() @ Matrix.Scale(
+            1.0 / 0.0254 if self.file_unit == 'IN' else self.global_scale, 4)
         keywords["global_matrix"] = global_matrix
 
         return export_x3d.save(context, **keywords)
@@ -298,7 +298,7 @@ class X3D_PT_import_transform(bpy.types.Panel):
         operator = sfile.active_operator
 
         layout.prop(operator, "file_unit")
-        
+
         sub = layout.row()
         sub.enabled = operator.file_unit == 'CUSTOM'
 
