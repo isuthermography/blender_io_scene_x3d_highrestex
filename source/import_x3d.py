@@ -3605,12 +3605,12 @@ def load_web3d(
         file_unit='M',
         global_scale=1.0,
         global_matrix=None,
-        HELPER_FUNC=None
-        ):
-
+        HELPER_FUNC=None,
+        as_collection=False
+):
     # Used when adding blender primitives
     GLOBALS['CIRCLE_DETAIL'] = PREF_CIRCLE_DIV
-    
+
     global conversion_scale
     conversion_scale = global_scale
 
@@ -3620,8 +3620,15 @@ def load_web3d(
     material_cache = {}
 
     bpyscene = bpycontext.scene
-    bpycollection = bpycontext.collection
-    #root_node = vrml_parse('/_Cylinder.wrl')
+
+    if as_collection:
+        active_collection = bpy.context.view_layer.active_layer_collection.collection
+        bpycollection = bpy.data.collections.new(os.path.basename(filepath))
+        active_collection.children.link(bpycollection)
+    else:
+        bpycollection = bpy.context.view_layer.active_layer_collection.collection
+
+    # root_node = vrml_parse('/_Cylinder.wrl')
     if filepath.lower().endswith('.x3d'):
         root_node, msg = x3d_parse(filepath)
     else:
@@ -3751,15 +3758,16 @@ def load(context,
          filepath,
          *,
          global_scale=1.0,
-         global_matrix=None
+         global_matrix=None,
+         as_collection=False
          ):
-
     # loadWithProfiler(operator, context, filepath, global_matrix)
     load_web3d(context, filepath,
                PREF_FLAT=True,
                PREF_CIRCLE_DIV=16,
                global_scale=global_scale,
                global_matrix=global_matrix,
+               as_collection=as_collection
                )
 
     return {'FINISHED'}

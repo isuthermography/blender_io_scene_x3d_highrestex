@@ -63,6 +63,12 @@ class ImportX3D(bpy.types.Operator, ImportHelper):
         description=translation["scale_description"],
     )
 
+    as_collection: BoolProperty(
+        name=translation["as_collection"],
+        description=translation["as_collection_description"],
+        default=False,
+    )
+
     def execute(self, context):
         from . import import_x3d
 
@@ -309,6 +315,22 @@ class X3D_PT_import_transform(bpy.types.Panel):
         layout.prop(operator, "axis_forward")
         layout.prop(operator, "axis_up")
 
+class X3D_PT_import_general(bpy.types.Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOL_PROPS'
+    bl_label = "General"
+    bl_parent_id = "FILE_PT_operator"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
+
+        sfile = context.space_data
+        operator = sfile.active_operator
+
+        layout.prop(operator, "as_collection")
+
 
 def menu_func_import(self, context):
     self.layout.operator(ImportX3D.bl_idname,
@@ -326,7 +348,8 @@ classes = (
     X3D_PT_export_transform,
     X3D_PT_export_geometry,
     ImportX3D,
-    X3D_PT_import_transform,
+    X3D_PT_import_general,
+    X3D_PT_import_transform
 )
 
 

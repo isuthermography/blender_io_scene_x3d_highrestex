@@ -53,6 +53,8 @@ def get_translation():
                     ".\nWARNING: This feature is disabled for blender versions higher than 2.79 "
                     "as the needed API method for exporting shaders got removed from blender. "
                     "\nThis feature may get fixed eventually, but no support expected",
+            "as_collection": "Import as collection",
+            "as_collection_description": "Import the file as a new collection inside the active collection",
         },
         "de_DE": {
             "import": "Importiere X3D/VRML2",
@@ -92,6 +94,8 @@ def get_translation():
                     ".\nWARNUNG: Diese Funktion ist für Blender-Versionen höher als 2.79 deaktiviert, " +
                     "da die benötigte API-Methode für den Export von Shadern aus Blender entfernt wurde. " +
                     "\nDiese Funktion könnte möglicherweise behoben werden, aber es wird keine Unterstützung erwartet",
+            "as_collection": "Als Sammlung importieren",
+            "as_collection_description": "Importieren Sie die Datei als neue Sammlung innerhalb der aktiven Sammlung",
         },
         "fr_FR": {
             "import": "Importer X3D/VRML2",
@@ -131,6 +135,8 @@ def get_translation():
                                           ".\nAVERTISSEMENT : Cette fonctionnalité est désactivée pour les versions de blender supérieures à 2.79 " +
                                           "car la méthode API nécessaire pour exporter les shaders a été supprimée de blender. " +
                                           "\nCette fonctionnalité pourrait être corrigée éventuellement, mais aucun support n'est attendu",
+            "as_collection": "Importer en tant que collection",
+            "as_collection_description": "Importer le fichier en tant que nouvelle collection dans la collection active",
         },
         "es_ES": {
             "import": "Importar X3D/VRML2",
@@ -170,6 +176,8 @@ def get_translation():
                                           ".\nADVERTENCIA: Esta función está deshabilitada para versiones de blender superiores a 2.79 " +
                                           "ya que se eliminó el método API necesario para exportar shaders de blender. " +
                                           "\nEsta función podría solucionarse eventualmente, pero no se espera soporte",
+            "as_collection": "Importar como colección",
+            "as_collection_description": "Importar el archivo como una nueva colección dentro de la colección activa",
         },
         "it_IT": {
             "import": "Importa X3D/VRML2",
@@ -209,6 +217,8 @@ def get_translation():
                                           ".\nAVVISO: Questa funzione è disabilitata per le versioni di blender superiori alla 2.79 " +
                                           "poiché il metodo API necessario per esportare gli shader è stato rimosso da blender. " +
                                           "\nQuesta funzione potrebbe essere risolta in futuro, ma non è previsto alcun supporto",
+            "as_collection": "Importa come collezione",
+            "as_collection_description": "Importa il file come una nuova collezione all'interno della collezione attiva",
         },
         "ru_RU": {
             "import": "Импорт X3D/VRML2",
@@ -248,6 +258,8 @@ def get_translation():
                                           ".\nПРЕДУПРЕЖДЕНИЕ: Эта функция отключена для версий Blender выше 2.79, " +
                                           "поскольку необходимый метод API для экспорта шейдеров был удален из Blender. " +
                                           "\nЭта функция может быть исправлена в будущем, но поддержки не ожидается",
+            "as_collection": "Импортировать как коллекцию",
+            "as_collection_description": "Импортировать файл как новую коллекцию внутри активной коллекции",
         },
         "zh_HANS": {
             "import": "导入 X3D/VRML2",
@@ -287,6 +299,8 @@ def get_translation():
                                         "。\n警告：对于高于 Blender 2.79 的版本，此功能已禁用，" +
                                         "因为导出着色器所需的 API 方法已从 Blender 中删除。" +
                                         "\n此功能可能会在将来修复，但不提供支持",
+            "as_collection": "作为集合导入",
+            "as_collection_description": "将文件作为一个新的集合导入到活动集合中",
     },
         "ja_JP": {
             "import": "インポート X3D/VRML2",
@@ -326,6 +340,8 @@ def get_translation():
                                           ".\n警告：この機能は Blender 2.79 より上のバージョンでは無効になっています。" +
                                           "シェーダーをエクスポートするために必要な API メソッドが Blender から削除されたためです。" +
                                           "\nこの機能は将来的に修正される可能性がありますが、サポートは期待されていません。",
+            "as_collection": "コレクションとしてインポート",
+            "as_collection_description": "ファイルをアクティブなコレクション内に新しいコレクションとしてインポートします",
         },
         "hi_IN": {
             "import": "आयात X3D/VRML2",
@@ -365,6 +381,8 @@ def get_translation():
                                           ".\nचेतावनी: यह सुविधा Blender संस्करण 2.79 से अधिक के लिए अक्षम है, " +
                                           "क्योंकि शेडर्स के निर्यात के लिए आवश्यक API विधि Blender से हटा दी गई है।" +
                                           "\nयह सुविधा भविष्य में ठीक हो सकती है, लेकिन कोई समर्थन अपेक्षित नहीं है",
+            "as_collection": "संग्रह के रूप में आयात करें",
+            "as_collection_description": "सक्रिय संग्रह के भीतर फ़ाइल को एक नए संग्रह के रूप में आयात करें",
         },
         "ar_AR": {
             "import": "استيراد X3D/VRML2",
@@ -404,5 +422,7 @@ def get_translation():
                                           ".\nتحذير: هذه الميزة معطلة للإصدارات من Blender التي تتجاوز 2.79 " +
                                           "نظرًا لإزالة الطريقة المطلوبة من واجهة برمجة التطبيقات لتصدير الشيدرز من Blender." +
                                           "\nقد يتم إصلاح هذه الميزة في المستقبل، ولكن لا يُتوقع دعمها",
+            "as_collection": "استيراد كـ مجموعة",
+            "as_collection_description": "استيراد الملف كمجموعة جديدة داخل المجموعة النشطة",
         }
     }
