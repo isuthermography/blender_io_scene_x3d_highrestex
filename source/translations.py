@@ -7,12 +7,25 @@ def get_language():
     translations = get_translation()
     return translations.get(current_language, translations["en_US"])
 
+def translate(language_translations, searchstring):
+    """A safer way to access translations, as each string has en_US fallback"""
+    try:
+        return language_translations[searchstring]
+    except KeyError:
+        try:
+            print(f"Web3D: It seems like {searchstring} is not yet translated for your language. Please create a bug report")
+            return get_translation()["en_US"][searchstring]
+        except Exception as e:
+            print(f"Web3D: An error occurred whilst translating: {e}, please create a bug report")
+            return searchstring
+
+
 def get_translation():
     """Define the translation dictionary for various languages."""
     ################################################# IMPORTANT ########################################################
-    # Rememeber when changing the english value to also either update or remove corresponding entry from the other languages.
-    # Otherwise we will get inconsitencies across the languages (and we don't want that, do we?)
-    # Whilst translation is optiomal, deletion is fine as well, then english will get used as fallback.
+    # Remember when changing the english value to also either update or remove corresponding entry from the other languages.
+    # Otherwise, we will get inconsistencies across the languages (and we don't want that, do we?)
+    # Whilst translation is optimal, deletion is fine as well, then english will get used as fallback.
     ################################################# IMPORTANT ########################################################
     return {
         "en_US": {

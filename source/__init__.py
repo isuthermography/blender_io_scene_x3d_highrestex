@@ -24,48 +24,48 @@ from bpy_extras.io_utils import (
     axis_conversion,
     path_reference_mode,
 )
-from .translations import get_language
+from .translations import get_language, translate
 
 blender_version = bpy.app.version
 blender_version_higher_279 = blender_version[0] > 2 or (blender_version[0] == 2 and blender_version[1] >= 79)
 
-translation = get_language()
+lang = get_language()
 
 @orientation_helper(axis_forward='Z', axis_up='Y')
 class ImportX3D(bpy.types.Operator, ImportHelper):
     """Import an X3D or VRML2 file"""
     bl_idname = "import_scene.x3d"
-    bl_label = translation["import"]
+    bl_label = translate(lang,"import")
     bl_options = {'PRESET', 'UNDO'}
 
     filename_ext = ".x3d"
     filter_glob: StringProperty(default="*.x3d;*.wrl", options={'HIDDEN'})
 
     file_unit: EnumProperty(
-        name=translation["file_unit"],
-        items=(('M', translation["meter"], translation["meter_description"]),
-               ('DM', translation["decimeter"], translation["decimeter_description"]),
-               ('CM', translation["centimeter"], translation["centimeter_description"]),
-               ('MM', translation["milimeter"], translation["milimeter_description"]),
-               ('IN', translation["inch"], translation["inch_description"]),
-               ('CUSTOM', translation["custom"], translation["custom_description"]),
+        name=translate(lang, "file_unit"),
+        items=(('M', translate(lang, "meter"), translate(lang, "meter_description")),
+               ('DM', translate(lang,"decimeter"), translate(lang, "decimeter_description")),
+               ('CM', translate(lang, "centimeter"), translate(lang, "centimeter_description")),
+               ('MM', translate(lang, "milimeter"), translate(lang, "milimeter_description")),
+               ('IN', translate(lang, "inch"), translate(lang, "inch_description")),
+               ('CUSTOM', translate(lang, "custom"), translate(lang, "custom_description")),
                ),
-        description=translation["file_unit_description"],
+        description=translate(lang, "file_unit_description"),
         default='M',
     )
 
     global_scale: FloatProperty(
-        name=translation["scale"],
+        name=translate(lang, "scale"),
         min=0.001, max=1000.0,
         default=1.0,
         precision=4,
         step=1.0,
-        description=translation["scale_description"],
+        description=translate(lang, "scale_description"),
     )
 
     as_collection: BoolProperty(
-        name=translation["as_collection"],
-        description=translation["as_collection_description"],
+        name=translate(lang, "as_collection"),
+        description=translate(lang, "as_collection_description"),
         default=False,
     )
 
@@ -187,63 +187,63 @@ class X3D_PT_export_geometry(bpy.types.Panel):
 class ExportX3D(bpy.types.Operator, ExportHelper):
     """Export selection to Extensible 3D file (.x3d)"""
     bl_idname = "export_scene.x3d"
-    bl_label = translation["export"]
+    bl_label = translate(lang, "export")
     bl_options = {'PRESET'}
 
     filename_ext = ".x3d"
     filter_glob: StringProperty(default="*.x3d", options={'HIDDEN'})
 
     use_selection: BoolProperty(
-        name=translation["selection_only"],
-        description=translation["selection_only_description"],
+        name=translate(lang, "selection_only"),
+        description=translate(lang, "selection_only_description"),
         default=False,
     )
     use_mesh_modifiers: BoolProperty(
-        name=translation["apply_modifiers"],
-        description=translation["apply_modifiers_description"],
+        name=translate(lang, "apply_modifiers"),
+        description=translate(lang, "apply_modifiers_description"),
         default=True,
     )
     use_triangulate: BoolProperty(
-        name=translation["triangulate"],
-        description=translation["triangulate_description"],
+        name=translate(lang, "triangulate"),
+        description=translate(lang, "triangulate_description"),
         default=False,
     )
     use_normals: BoolProperty(
-        name=translation["normals"],
-        description=translation["normals_description"],
+        name=translate(lang, "normals"),
+        description=translate(lang, "normals_description"),
         default=False,
     )
     use_compress: BoolProperty(
-        name=translation["compress"],
-        description=translation["compress_description"],
+        name=translate(lang, "compress"),
+        description=translate(lang, "compress_description"),
         default=False,
     )
     use_hierarchy: BoolProperty(
-        name=translation["hierarchy"],
-        description=translation["hierarchy_description"],
+        name=translate(lang, "hierarchy"),
+        description=translate(lang, "hierarchy_description"),
         default=True,
     )
     name_decorations: BoolProperty(
-        name=translation["name_decorations"],
-        description=translation["name_decorations_description"],
+        name=translate(lang, "name_decorations"),
+        description=translate(lang, "name_decorations_description"),
         default=True,
     )
     use_h3d: BoolProperty(
-        name=translation["h3d_extensions"],
-        description=translation["h3d_extensions_description"],
+        name=translate(lang, "h3d_extensions"),
+        description=translate(lang, "h3d_extensions_description"),
         default=False,
     )
 
     file_unit: EnumProperty(
-        name=translation["file_unit"],
-        items=(('M', translation["meter"], translation["meter_description"]),
-               ('DM', translation["decimeter"], translation["decimeter_description"]),
-               ('CM', translation["centimeter"], translation["centimeter_description"]),
-               ('MM', translation["milimeter"], translation["milimeter_description"]),
-               ('IN', translation["inch"], translation["inch_description"]),
-               ('CUSTOM', translation["custom"], translation["custom_description"]),
+        name=translate(lang, "file_unit"),
+        items=(('M', translate(lang, "meter"), translate(lang, "meter_description")),
+               ('DM', translate(lang, "decimeter"), translate(lang, "decimeter_description")),
+               ('CM', translate(lang, "centimeter"), translate(lang, "centimeter_description")),
+               ('MM', translate(lang, "milimeter"), translate(lang, "milimeter_description")),
+               ('IN', translate(lang, "inch"), translate(lang, "inch_description")),
+               ('CUSTOM', translate(lang, "custom"), translate(lang, "custom_description")),
                ),
-        description=translation["file_unit_description"],
+        description=translate(lang, "file_unit_description"),
         default='M',
     )
 
@@ -253,7 +253,7 @@ class ExportX3D(bpy.types.Operator, ExportHelper):
         default=1.0,
         precision=4,
         step=1.0,
-        description=translation["scale_description"],
+        description=translate(lang, "scale_description"),
     )
 
     path_mode: path_reference_mode
