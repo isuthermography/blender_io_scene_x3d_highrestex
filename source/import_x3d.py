@@ -95,7 +95,7 @@ def vrmlFormat(data):
     """
     # Strip all comments - # not in strings - warning multiline strings are ignored.
     def strip_comment(l):
-        #l = ' '.join(l.split())
+        # l = ' '.join(l.split())
         l = l.strip()
 
         if l.startswith('#'):
@@ -107,7 +107,7 @@ def vrmlFormat(data):
             return l
 
         # Most cases accounted for! if we have a comment at the end of the line do this...
-        #j = l.find('url "')
+        # j = l.find('url "')
         j = l.find('"')
 
         if j == -1:  # simple no strings
@@ -135,7 +135,7 @@ def vrmlFormat(data):
 
         string_ls = []
 
-        #search = 'url "'
+        # search = 'url "'
         search = '"'
 
         ok = True
@@ -208,6 +208,7 @@ def vrmlFormat(data):
 
     return [l for l in data.split('\n') if l]
 
+
 NODE_NORMAL = 1  # {}
 NODE_ARRAY = 2  # []
 NODE_REFERENCE = 3  # USE foobar
@@ -261,7 +262,7 @@ def is_nodeline(i, words):
     if not lines[i][0].isalpha():
         return 0, 0
 
-    #if lines[i].startswith('field'):
+    # if lines[i].startswith('field'):
     #   return 0, 0
 
     # Is this a prototype??
@@ -303,7 +304,7 @@ def is_nodeline(i, words):
             # There is a number in one of the values, therefor we are not a node.
             return 0, 0
 
-    #if node_type==NODE_REFERENCE:
+    # if node_type==NODE_REFERENCE:
     #   print(words, "REF_!!!!!!!")
     return node_type, new_i
 
@@ -421,6 +422,7 @@ class vrmlNode(object):
         else:
             return self.parent.getFieldDict()
     '''
+
     def getProtoDict(self):
         if self.PROTO_NAMESPACE is not None:
             return self.PROTO_NAMESPACE
@@ -572,7 +574,7 @@ class vrmlNode(object):
                     self_spec = self.getSpec()
 
                     if child.getProtoName() == self_spec or child.getExternprotoName() == self_spec:
-                        #if DEBUG:
+                        # if DEBUG:
                         #    "FoundProto!"
                         child.getSerialized(results, ancestry)
 
@@ -613,7 +615,7 @@ class vrmlNode(object):
                             # 'field SFColor legColor .8 .4 .7'
                             if AS_CHILD:
                                 for child in node.proto_node.children:
-                                    #if child.id  and  len(child.id) >= 3  and child.id[2]==field_id:
+                                    # if child.id  and  len(child.id) >= 3  and child.id[2]==field_id:
                                     if child.id and ('point' in child.id or 'points' in child.id):
                                         f_proto_child_lookup = child
 
@@ -696,7 +698,7 @@ class vrmlNode(object):
             return default
 
         try:
-            return float(f[0])*scale_factor
+            return float(f[0]) * scale_factor
         except:
             print('\tvalue "%s" could not be used as a float for field "%s"' % (f[0], field))
             return default
@@ -717,7 +719,7 @@ class vrmlNode(object):
         for v in f:
             if v != ',':
                 try:
-                    ret.append(float(v.strip('"'))*scale_factor)
+                    ret.append(float(v.strip('"')) * scale_factor)
                 except:
                     break  # quit of first non float, perhaps its a new field name on the same line? - if so we are going to ignore it :/ TODO
         # print(ret)
@@ -796,7 +798,7 @@ class vrmlNode(object):
 
         child_array = self_real.getFieldName(field, ancestry, True, SPLIT_COMMAS=True)
 
-        #if type(child_array)==list: # happens occasionally
+        # if type(child_array)==list: # happens occasionally
         #   array_data = child_array
 
         if child_array is None:
@@ -833,10 +835,10 @@ class vrmlNode(object):
         if flat:
             if apply_scale:
                 # applying scale
-                flat_array = [n*scale_factor for n in array_data] # scaling the data 
+                flat_array = [n * scale_factor for n in array_data]  # scaling the data
             else:
                 flat_array = array_data  # we are already flat.
-        
+
         else:
             flat_array = []
 
@@ -945,7 +947,7 @@ class vrmlNode(object):
             text += ind + str(item) + '\n'
 
         text += ind + 'ARRAY: ' + str(len(self.array_data)) + ' ' + str(self.array_data) + '\n'
-        #text += ind + 'ARRAY: ' + str(len(self.array_data)) + '[...] \n'
+        # text += ind + 'ARRAY: ' + str(len(self.array_data)) + '[...] \n'
 
         text += ind + 'CHILDREN: ' + str(len(self.children)) + '\n'
         for i, child in enumerate(self.children):
@@ -1131,7 +1133,7 @@ class vrmlNode(object):
                 spec = self.getSpec()
                 try:
                     self.children.append(proto_dict[spec])
-                    #pass
+                    # pass
                 except:
                     pass
 
@@ -1158,14 +1160,14 @@ class vrmlNode(object):
                     print('wrong node ending, expected an } ' + str(i) + ' ' + str(self.node_type))
                     if DEBUG:
                         raise ValueError
-                ### print("returning", i)
+                # print("returning", i)
                 return i + 1
             if l == ']':
                 if self.node_type != NODE_ARRAY:
                     print('wrong node ending, expected a ] ' + str(i) + ' ' + str(self.node_type))
                     if DEBUG:
                         raise ValueError
-                ### print("returning", i)
+                # print("returning", i)
                 return i + 1
 
             node_type, new_i = is_nodeline(i, [])
@@ -1212,8 +1214,8 @@ class vrmlNode(object):
 
                     # print("FIELD", i, l)
                     #
-                    #words = l.split()
-                    ### print('\t\ttag', i)
+                    # words = l.split()
+                    # print('\t\ttag', i)
                     # this is a tag/
                     # print(words, i, l)
                     value = l
@@ -1469,10 +1471,11 @@ def x3d_parse(path):
 
     return root, ''
 
-## f = open('/_Cylinder.wrl', 'r')
+
+# f = open('/_Cylinder.wrl', 'r')
 # f = open('/fe/wrl/Vrml/EGS/TOUCHSN.WRL', 'r')
 # vrml_parse('/fe/wrl/Vrml/EGS/TOUCHSN.WRL')
-#vrml_parse('/fe/wrl/Vrml/EGS/SCRIPT.WRL')
+# vrml_parse('/fe/wrl/Vrml/EGS/SCRIPT.WRL')
 '''
 import os
 files = os.popen('find /fe/wrl -iname "*.wrl"').readlines()
@@ -1592,6 +1595,7 @@ def translateTexTransform(node, ancestry):
 
     return new_mat
 
+
 def getFinalMatrix(node, mtx, ancestry, global_matrix):
 
     transform_nodes = [node_tx for node_tx in ancestry if node_tx.getSpec() == 'Transform']
@@ -1619,6 +1623,7 @@ def linear_to_srgb(linear):
     else:
         return 1.055 * (linear ** (1.0 / 2.4)) - 0.055
 
+
 def srgb_to_linear(srgb_value):
     """Converts a srgb color value to linear space"""
     if srgb_value <= 0.04045:
@@ -1638,6 +1643,7 @@ def set_new_float_color_attribute(bpymesh, color_data, name: str = "ColorPerCorn
     # add new color attribute
     bpymesh.color_attributes.new(name, 'FLOAT_COLOR', 'CORNER')
     bpymesh.color_attributes[name].data.foreach_set("color", color_data)
+
 
 # Assumes that the mesh has polygons.
 def importMesh_ApplyColors(bpymesh, geom, ancestry):
@@ -1716,8 +1722,8 @@ def importMesh_ApplyUVs(bpymesh, geom, ancestry):
 
     d = bpymesh.uv_layers.new().data
     uvs = [i for poly in bpymesh.polygons
-            for vidx in poly.vertices
-            for i in uvs[vidx]]
+           for vidx in poly.vertices
+           for i in uvs[vidx]]
     d.foreach_set('uv', uvs)
 
 
@@ -1957,7 +1963,7 @@ def importMesh_IndexedFaceSet(geom, ancestry):
             face = []
         else:
             if cull is not None:
-                if not(i in cull):
+                if not (i in cull):
                     culled_points.append(points[i])
                     cull[i] = new_index
                     uncull.append(i)
@@ -2003,8 +2009,8 @@ def importMesh_IndexedFaceSet(geom, ancestry):
             if len(normal_index) == 0:
                 normal_index = index
             co = [co for f in processPerVertexIndex(normal_index)
-                     for v in f
-                     for co in mathutils.Vector(vectors[v]).normalized().to_tuple()]
+                  for v in f
+                  for co in mathutils.Vector(vectors[v]).normalized().to_tuple()]
             bpymesh.vertices.foreach_set("normal", co)
 
             # Mesh must be validated before assigning normals, but validation might
@@ -2013,8 +2019,8 @@ def importMesh_IndexedFaceSet(geom, ancestry):
             bpymesh.attributes["temp_custom_normals"].data.foreach_set("vector", co)
         else:
             co = [co for (i, f) in enumerate(faces)
-                     for j in f
-                     for co in mathutils.Vector(vectors[normal_index[i] if normal_index else i]).normalized().to_tuple()]
+                  for j in f
+                  for co in mathutils.Vector(vectors[normal_index[i] if normal_index else i]).normalized().to_tuple()]
             bpymesh.polygons.foreach_set("normal", co)
 
     # Apply vertex/face colors
@@ -2040,11 +2046,11 @@ def importMesh_IndexedFaceSet(geom, ancestry):
                 if v == -1:
                     color_index.insert(i, -1)
 
-        if color_per_vertex and has_color_index: # Color per vertex with index
+        if color_per_vertex and has_color_index:  # Color per vertex with index
             cco = [cco for f in processPerVertexIndex(color_index)
                    for v in f
                    for cco in rgb[v]]
-        elif color_per_vertex: # Color per vertex without index
+        elif color_per_vertex:  # Color per vertex without index
             # use vertex value by default, however if lengths mismatch use the positional value to access rgb value
             # ain't ideal by far, but should most likely work
             try:
@@ -2058,17 +2064,17 @@ def importMesh_IndexedFaceSet(geom, ancestry):
                        for cco in rgb[i]]
         elif color_index:  # Color per face with index
             cco = [cco for (i, f) in enumerate(faces)
-                       for j in f
-                       for cco in rgb[color_index[i]]]
+                   for j in f
+                   for cco in rgb[color_index[i]]]
         elif len(faces) > len(rgb):  # Static color per face without index, when all faces have the same color.
             # Exported from SOLIDWORKS, see: `blender/blender-addons#105398`.
             cco = [cco for (i, f) in enumerate(faces)
-                       for j in f
-                       for cco in rgb[0]]
+                   for j in f
+                   for cco in rgb[0]]
         else:  # Color per face without index
             cco = [cco for (i, f) in enumerate(faces)
-                       for j in f
-                       for cco in rgb[i]]
+                   for j in f
+                   for cco in rgb[i]]
 
         if color_per_vertex:
             # Mesh must be validated before assigning colors, but validation might
@@ -2084,10 +2090,10 @@ def importMesh_IndexedFaceSet(geom, ancestry):
         tex_index = geom.getFieldAsArray('texCoordIndex', 0, ancestry)
         tex_index = processPerVertexIndex(tex_index)
         loops = [co for f in tex_index
-                    for v in f
-                    for co in tex_coord_points[v]]
+                 for v in f
+                 for co in tex_coord_points[v]]
     else:
-        x_min = y_min = z_min =  math.inf
+        x_min = y_min = z_min = math.inf
         x_max = y_max = z_max = -math.inf
         for f in faces:
             # Unused vertices don't participate in size; X3DOM does so
@@ -2120,8 +2126,8 @@ def importMesh_IndexedFaceSet(geom, ancestry):
         def generatePointCoords(pt):
             return (pt[s_axis] - s_min) / ds, (pt[t_axis] - t_min) / dt
         loops = [co for f in faces
-                    for v in f
-                    for co in generatePointCoords(points[v])]
+                 for v in f
+                 for co in generatePointCoords(points[v])]
 
     importMesh_ApplyTextureToLoops(bpymesh, loops)
 
@@ -2129,7 +2135,7 @@ def importMesh_IndexedFaceSet(geom, ancestry):
 
     # Apply normals per vertex
     if normals and per_vertex:
-        co2 = [0.0 for x in range(int(len(bpymesh.attributes["temp_custom_normals"].data)*3))]
+        co2 = [0.0 for x in range(int(len(bpymesh.attributes["temp_custom_normals"].data) * 3))]
         bpymesh.attributes["temp_custom_normals"].data.foreach_get("vector", co2)
         bpymesh.normals_split_custom_set(tuple(zip(*(iter(co2),) * 3)))
         bpymesh.attributes.remove(bpymesh.attributes["temp_custom_normals"])
@@ -2193,19 +2199,19 @@ def importMesh_ElevationGrid(geom, ancestry):
             # Per-vertex coloring
             # Note the 2/4 flip here
             set_new_float_color_attribute(bpymesh,
-                           [c for x in range(x_dim - 1)
-                              for z in range(z_dim - 1)
-                              for rgb_idx in (z * x_dim + x,
-                                              z * x_dim + x + 1 if ccw else (z + 1) * x_dim + x,
-                                              (z + 1) * x_dim + x + 1,
-                                              (z + 1) * x_dim + x if ccw else z * x_dim + x + 1)
-                              for c in rgb[rgb_idx]])
+                                          [c for x in range(x_dim - 1)
+                                           for z in range(z_dim - 1)
+                                           for rgb_idx in (z * x_dim + x,
+                                                           z * x_dim + x + 1 if ccw else (z + 1) * x_dim + x,
+                                                           (z + 1) * x_dim + x + 1,
+                                                           (z + 1) * x_dim + x if ccw else z * x_dim + x + 1)
+                                           for c in rgb[rgb_idx]])
         else:  # Coloring per face
             set_new_float_color_attribute(bpymesh,
-                           [c for x in range(x_dim - 1)
-                              for z in range(z_dim - 1)
-                              for rgb_idx in (z * (x_dim - 1) + x,) * 4
-                              for c in rgb[rgb_idx]])
+                                          [c for x in range(x_dim - 1)
+                                           for z in range(z_dim - 1)
+                                           for rgb_idx in (z * (x_dim - 1) + x,) * 4
+                                           for c in rgb[rgb_idx]])
 
     # Textures also need special treatment; it's all quads,
     # and there's a builtin algorithm for coordinate generation
@@ -2214,15 +2220,15 @@ def importMesh_ElevationGrid(geom, ancestry):
         uvs = tex_coord.getFieldAsArray('point', 2, ancestry)
     else:
         uvs = [(i / (x_dim - 1), j / (z_dim - 1))
-                        for i in range(x_dim)
-                        for j in range(z_dim)]
+               for i in range(x_dim)
+               for j in range(z_dim)]
 
     d = bpymesh.uv_layers.new().data
     # Rather than repeat the face/vertex algorithm from above, we read
     # the vertex index back from polygon. Might be suboptimal.
     uvs = [i for poly in bpymesh.polygons
-            for vidx in poly.vertices
-            for i in uvs[vidx]]
+           for vidx in poly.vertices
+           for i in uvs[vidx]]
     d.foreach_set('uv', uv)
 
     bpymesh.validate()
@@ -2541,7 +2547,7 @@ def importMesh_Sphere(geom, ancestry):
     # solid is ignored.
     # Extra field 'subdivision="n m"' attribute, specifying how many
     # rings and segments to use (X3DOM).
-    r = geom.getFieldAsFloat('radius', 0.5*conversion_scale, ancestry, conversion_scale)
+    r = geom.getFieldAsFloat('radius', 0.5 * conversion_scale, ancestry, conversion_scale)
     subdiv = geom.getFieldAsArray('subdivision', 0, ancestry)
     if subdiv:
         if len(subdiv) == 1:
@@ -2636,8 +2642,8 @@ def importMesh_Cylinder(geom, ancestry):
     # solid is ignored
     # no ccw in this element
     # Extra parameter subdivision="n" - how many faces to use
-    radius = geom.getFieldAsFloat('radius', 1.0*conversion_scale, ancestry, conversion_scale)
-    height = geom.getFieldAsFloat('height', 2.0*conversion_scale, ancestry, conversion_scale)
+    radius = geom.getFieldAsFloat('radius', 1.0 * conversion_scale, ancestry, conversion_scale)
+    height = geom.getFieldAsFloat('height', 2.0 * conversion_scale, ancestry, conversion_scale)
     bottom = geom.getFieldAsBool('bottom', True, ancestry)
     side = geom.getFieldAsBool('side', True, ancestry)
     top = geom.getFieldAsBool('top', True, ancestry)
@@ -2694,8 +2700,8 @@ def importMesh_Cone(geom, ancestry):
     # Solid ignored
     # Extra parameter subdivision="n" - how many faces to use
     n = geom.getFieldAsInt('subdivision', GLOBALS['CIRCLE_DETAIL'], ancestry)
-    radius = geom.getFieldAsFloat('bottomRadius', 1.0*conversion_scale, ancestry, conversion_scale)
-    height = geom.getFieldAsFloat('height', 2.0*conversion_scale, ancestry, conversion_scale)
+    radius = geom.getFieldAsFloat('bottomRadius', 1.0 * conversion_scale, ancestry, conversion_scale)
+    height = geom.getFieldAsFloat('height', 2.0 * conversion_scale, ancestry, conversion_scale)
     bottom = geom.getFieldAsBool('bottom', True, ancestry)
     side = geom.getFieldAsBool('side', True, ancestry)
 
@@ -2734,7 +2740,7 @@ def importMesh_Cone(geom, ancestry):
 def importMesh_Box(geom, ancestry):
     # Solid is ignored
     # No ccw in this element
-    (dx, dy, dz) = geom.getFieldAsFloatTuple('size', (2.0*conversion_scale, 2.0*conversion_scale, 2.0*conversion_scale), ancestry, conversion_scale)
+    (dx, dy, dz) = geom.getFieldAsFloatTuple('size', (2.0 * conversion_scale, 2.0 * conversion_scale, 2.0 * conversion_scale), ancestry, conversion_scale)
     dx /= 2
     dy /= 2
     dz /= 2
@@ -2787,7 +2793,7 @@ def appearance_CreateMaterial(vrmlname, mat, ancestry, is_vcol):
     bpymat_wrap = node_shader_utils.PrincipledBSDFWrapper(bpymat, is_readonly=False)
 
     # TODO: handle 'ambientIntensity'.
-    #ambient = mat.getFieldAsFloat('ambientIntensity', 0.2, ancestry)
+    # ambient = mat.getFieldAsFloat('ambientIntensity', 0.2, ancestry)
 
     diff_color = mat.getFieldAsFloatTuple('diffuseColor', [0.8, 0.8, 0.8], ancestry)
     bpymat_wrap.base_color = diff_color
@@ -2799,10 +2805,10 @@ def appearance_CreateMaterial(vrmlname, mat, ancestry, is_vcol):
     shininess = mat.getFieldAsFloat('shininess', 0.2, ancestry)
     bpymat_wrap.roughness = 1.0 - shininess
 
-    #bpymat.specular_hardness = int(1 + (510 * shininess))
+    # bpymat.specular_hardness = int(1 + (510 * shininess))
     # 0-1 -> 1-511
     # TODO: handle 'specularColor'.
-    #specular_color = mat.getFieldAsFloatTuple('specularColor',
+    # specular_color = mat.getFieldAsFloatTuple('specularColor',
     #                                          [0.0, 0.0, 0.0], ancestry)
 
     alpha = 1.0 - mat.getFieldAsFloat('transparency', 0.0, ancestry)
@@ -2834,13 +2840,13 @@ def appearance_CreateDefaultMaterial():
 
     bpymat_wrap.roughness = 0.8
     bpymat_wrap.base_color = (0.8, 0.8, 0.8)
-    #bpymat.mirror_color = (0, 0, 0)
-    #bpymat.emit = 0
+    # bpymat.mirror_color = (0, 0, 0)
+    # bpymat.emit = 0
 
     # TODO: handle 'shininess' and 'specularColor'.
-    #bpymat.specular_hardness = 103
+    # bpymat.specular_hardness = 103
     # 0-1 -> 1-511
-    #bpymat.specular_color = (0, 0, 0)
+    # bpymat.specular_color = (0, 0, 0)
 
     bpymat_wrap.alpha = 1.0
     return bpymat_wrap
@@ -2944,8 +2950,8 @@ def appearance_MakeDescCacheKey(material, tex_node):
     mat_desc = material.desc() if material else "Default"
     tex_desc = tex_node.desc() if tex_node else "Default"
 
-    if not((tex_node and tex_desc is None) or
-           (material and mat_desc is None)):
+    if not ((tex_node and tex_desc is None) or
+            (material and mat_desc is None)):
         # desc not available (in VRML)
         # TODO: serialize VRML nodes!!!
         return (mat_desc, tex_desc)
@@ -3085,7 +3091,7 @@ def appearance_LoadPixelTexture(pixelTexture, ancestry):
     (w, h, plane_count) = image[0:3]
     has_alpha = plane_count in {2, 4}
     # get either hex color values (multiline) or regular color values (singleline)
-    pixels = extract_pixel_colors(str(pixelTexture)) # converting to string may not be ideal, but works
+    pixels = extract_pixel_colors(str(pixelTexture))  # converting to string may not be ideal, but works
     if len(pixels) == 0:
         pixels = image[3:]
     if len(pixels) != w * h:
@@ -3100,18 +3106,18 @@ def appearance_LoadPixelTexture(pixelTexture, ancestry):
         # Conditional above the loop, for performance
         if plane_count == 3:  # RGB
             bpyima.pixels = [(cco & 0xff) / 255 for pixel in pixels
-                            for cco in (pixel >> 16, pixel >> 8, pixel, 255)]
+                             for cco in (pixel >> 16, pixel >> 8, pixel, 255)]
         elif plane_count == 4:  # RGBA
             bpyima.pixels = [(cco & 0xff) / 255 for pixel in pixels
-                            for cco
-                            in (pixel >> 24, pixel >> 16, pixel >> 8, pixel)]
+                             for cco
+                             in (pixel >> 24, pixel >> 16, pixel >> 8, pixel)]
         elif plane_count == 1:  # Intensity - does Blender even support that?
             bpyima.pixels = [(cco & 0xff) / 255 for pixel in pixels
-                            for cco in (pixel, pixel, pixel, 255)]
+                             for cco in (pixel, pixel, pixel, 255)]
         elif plane_count == 2:  # Intensity/alpha
             bpyima.pixels = [(cco & 0xff) / 255 for pixel in pixels
-                            for cco
-                            in (pixel >> 8, pixel >> 8, pixel >> 8, pixel)]
+                             for cco
+                             in (pixel >> 8, pixel >> 8, pixel >> 8, pixel)]
     bpyima.update()
     return bpyima
 
@@ -3206,7 +3212,7 @@ geometry_importers = {
     'Cylinder': importMesh_Cylinder,
     'Cone': importMesh_Cone,
     'Text': importText,
-    }
+}
 
 
 def importShape(bpycollection, node, ancestry, global_matrix):
@@ -3267,9 +3273,9 @@ def importShape(bpycollection, node, ancestry, global_matrix):
         # There are no geometry importers that can legally return
         # no object.  It's either a bpy object, or an exception
         importShape_ProcessObject(
-                bpycollection, vrmlname, bpydata, geom, geom_spec,
-                node, bpymat, tex_has_alpha, texmtx,
-                ancestry, global_matrix)
+            bpycollection, vrmlname, bpydata, geom, geom_spec,
+            node, bpymat, tex_has_alpha, texmtx,
+            ancestry, global_matrix)
     else:
         print('\tImportX3D warning: unsupported type "%s"' % geom_spec)
 
@@ -3421,7 +3427,7 @@ def importTransform(bpycollection, node, ancestry, global_matrix):
     bpyob.empty_display_size = 0.2
 
 
-#def importTimeSensor(node):
+# def importTimeSensor(node):
 def action_fcurve_ensure(action, data_path, array_index):
     for fcu in action.fcurves:
         if fcu.data_path == data_path and fcu.array_index == array_index:
@@ -3557,10 +3563,10 @@ ROUTE vpTs.fraction_changed TO vpOI.set_fraction
 ROUTE champFly001.bindTime TO vpTs.set_startTime
     """
 
-    #from_id, from_type = node.id[1].split('.')
-    #to_id, to_type = node.id[3].split('.')
+    # from_id, from_type = node.id[1].split('.')
+    # to_id, to_type = node.id[3].split('.')
 
-    #value_changed
+    # value_changed
     set_position_node = None
     set_orientation_node = None
     time_node = None
@@ -3645,7 +3651,7 @@ def load_web3d(
     all_nodes = root_node.getSerialized([], [])
 
     for node, ancestry in all_nodes:
-        #if 'castle.wrl' not in node.getFilename():
+        # if 'castle.wrl' not in node.getFilename():
         #   continue
 
         spec = node.getSpec()
@@ -3667,7 +3673,7 @@ def load_web3d(
             importViewpoint(bpycollection, node, ancestry, global_matrix)
         elif spec == 'Transform':
             # Only use transform nodes when we are not importing a flat object hierarchy
-            if PREF_FLAT == False:
+            if not PREF_FLAT:
                 importTransform(bpycollection, node, ancestry, global_matrix)
             '''
         # These are delt with later within importRoute
@@ -3741,7 +3747,7 @@ def load_with_profiler(
         filepath,
         *,
         global_matrix=None
-        ):
+):
     import cProfile
     import pstats
     pro = cProfile.Profile()

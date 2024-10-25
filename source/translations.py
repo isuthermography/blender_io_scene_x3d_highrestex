@@ -1,11 +1,13 @@
 import bpy
 
+
 def get_language():
     """Get the current localization translation, defaults to english"""
     # langauge will only update when the script is loaded, so no change at runtime possible
     current_language = bpy.app.translations.locale
     translations = get_translation()
     return translations.get(current_language, translations["en_US"])
+
 
 def translate(language_translations, searchstring):
     """A safer way to access translations, as each string has en_US fallback"""
@@ -309,12 +311,12 @@ def get_translation():
             "name_decorations_description": "在导出的节点名称中添加前缀以指示其类型",
             "h3d_extensions": "H3D 扩展",
             "h3d_extensions_description": "为 H3D 导出着色器" +
-                                        "。\n警告：对于高于 Blender 2.79 的版本，此功能已禁用，" +
-                                        "因为导出着色器所需的 API 方法已从 Blender 中删除。" +
-                                        "\n此功能可能会在将来修复，但不提供支持",
+                                          "。\n警告：对于高于 Blender 2.79 的版本，此功能已禁用，" +
+                                          "因为导出着色器所需的 API 方法已从 Blender 中删除。" +
+                                          "\n此功能可能会在将来修复，但不提供支持",
             "as_collection": "作为集合导入",
             "as_collection_description": "将文件作为一个新的集合导入到活动集合中",
-    },
+        },
         "ja_JP": {
             "import": "インポート X3D/VRML2",
             "export": "エクスポート X3D",
