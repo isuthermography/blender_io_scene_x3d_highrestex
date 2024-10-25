@@ -3182,7 +3182,17 @@ def importText(geom, ancestry):
     fmt = geom.getChildBySpec('FontStyle')
     size = fmt.getFieldAsFloat("size", 1, ancestry) if fmt else 1.
     body = geom.getFieldAsString("string", None, ancestry)
-    body = [w.strip('"') for w in body.split('" "')]
+    if body is not None:
+        # X3D.
+        body = [w.strip('"') for w in body.split('" "')]
+    else:
+        # VRML, see #27.
+        strings = geom.getChildByName("string")
+        body = [
+            w.strip('"') for words in (strings.fields if strings is not None else ())
+            for w in words
+            if w != ","
+        ]
 
     bpytext = bpy.data.curves.new(name="Text", type='FONT')
     bpytext.offset_y = - size
