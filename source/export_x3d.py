@@ -2,18 +2,10 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-This script exports to X3D format.
-
-Usage:
-Run this script from "File->Export" menu.  A pop-up will ask whether you
-want to export only selected or all relevant objects.
-
-Known issues:
-    Doesn't handle multiple materials (don't use material indices);<br>
-    Doesn't handle multiple UV textures on a single mesh (create a mesh for each texture);<br>
-    Can't get the texture array associated with material * not the UV ones;
-"""
+# Known issues:
+# - Doesn't handle multiple materials (don't use material indices).
+# - Doesn't handle multiple UV textures on a single mesh (create a mesh for each texture).
+# - Can't get the texture array associated with material * not the UV ones.
 
 import math
 import os

@@ -7,7 +7,7 @@ import bpy
 
 def get_language():
     """Get the current localization translation, defaults to english"""
-    # langauge will only update when the script is loaded, so no change at runtime possible
+    # Language will only update when the script is loaded, so no change at runtime possible.
     current_language = bpy.app.translations.locale
     translations = get_translation()
     return translations.get(current_language, translations["en_US"])
