@@ -25,6 +25,8 @@ ignore = [
     # could be reported as a bug except this is likely to be removed soon, see:
     # https://github.com/python/cpython/issues/84540.
     "W690",
+    # The X3D scripts includes long lines that should be handled manually.
+    "E501"
 ]
 
 # Use aggressive as many useful edits are disabled unless it's enabled.
