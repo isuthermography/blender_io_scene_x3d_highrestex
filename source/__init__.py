@@ -321,6 +321,14 @@ class X3D_PT_import_general(bpy.types.Panel):
     bl_label = "General"
     bl_parent_id = "FILE_PT_operator"
 
+    @classmethod
+    def poll(cls, context):
+        sfile = context.space_data
+        operator = sfile.active_operator
+
+        return operator.bl_idname == "IMPORT_SCENE_OT_x3d"
+
+
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
