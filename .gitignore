@@ -1,6 +1,10 @@
 # Generic files to ignore.
 .*
 
+# unignore .gitea folder
+!.gitea/
+!.gitea/issue_templates/
+
 # Python temp paths.
 __pycache__/
 *.py[cod]
