@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2011-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2024 Bujus_Krachus
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 

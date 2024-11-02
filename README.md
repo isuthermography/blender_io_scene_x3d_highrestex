@@ -21,7 +21,7 @@ For more information about building extensions refer to the [documentation](http
 
 ## Contribute
 
-This add-on is offered as it is and maintaned by @Bujus_Krachus and the community, no support expected.
+This add-on is offered as it is and maintained by @Bujus_Krachus and the community, no support expected.
 
 Contributions in form of [bug reports](https://projects.blender.org/extensions/io_scene_x3d/issues), bug fixes, improvements, new features, etc. are always welcome as I don't have the time to do it all.
 
@@ -39,3 +39,7 @@ For deeper understanding of both file formats supported by this extension, refer
 Comparison software:
 - [FreeWRL](https://freewrl.sourceforge.io/)
 - [x3dom](https://www.x3dom.org/)
+- [x_ite](https://create3000.github.io/x_ite/)
+
+## License
+[GPL-3.0](LICENSE.txt)

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2024 Bujus_Krachus
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 import bpy
 from bpy.types import Operator, AddonPreferences
 import io, platform, struct, urllib
