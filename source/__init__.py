@@ -2,6 +2,22 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+bl_info = {
+    "name":"Web3D X3D/VRML2 format",
+    "description": "Import-Export X3D, Import VRML2",
+    "author": "maintainer: Bujus_Krachus",
+    "version": (2, 3, 7),
+    "blender": (4, 2, 0),
+    "location": "",
+    "warning": "",
+    "doc_url": "",
+    'tracker_url': "https://projects.blender.org/extensions/io_scene_x3d",
+    'support': 'COMMUNITY',
+    "category": "IO",
+}
+bl_info_copy = bl_info.copy()
+
+
 if "bpy" in locals():
     import importlib
 
@@ -25,6 +41,7 @@ from bpy_extras.io_utils import (
     path_reference_mode,
 )
 from .translations import get_language, translate
+from .prefs import X3D_Preferences
 
 blender_version = bpy.app.version
 blender_version_higher_279 = blender_version[0] > 2 or (blender_version[0] == 2 and blender_version[1] >= 79)
@@ -357,7 +374,8 @@ classes = (
     X3D_PT_export_geometry,
     ImportX3D,
     X3D_PT_import_general,
-    X3D_PT_import_transform
+    X3D_PT_import_transform,
+    X3D_Preferences
 )
 
 
