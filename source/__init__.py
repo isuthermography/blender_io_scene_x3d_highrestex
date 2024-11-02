@@ -126,9 +126,16 @@ class X3D_PT_export_include(bpy.types.Panel):
         sfile = context.space_data
         operator = sfile.active_operator
 
-        layout.prop(operator, "use_selection")
-        layout.prop(operator, "use_hierarchy")
-        layout.prop(operator, "name_decorations")
+        sublayout = layout.column(heading="Limit to")
+        sublayout.enabled = True
+        sublayout.prop(operator, "use_selection")
+        sublayout.prop(operator, "use_visible")
+        sublayout.prop(operator, "use_active_collection")
+
+        sublayout = layout.column(heading="Include data")
+        sublayout.enabled = True
+        sublayout.prop(operator, "use_hierarchy")
+        sublayout.prop(operator, "name_decorations")
         # keeping h3d disabled for now as the underlying gpu.export_shader() got removed since 2.80
         # see https://projects.blender.org/blender/blender-addons/issues/79991 for details
         # when readding it, don't forget to change the description
@@ -213,6 +220,16 @@ class ExportX3D(bpy.types.Operator, ExportHelper):
     use_selection: BoolProperty(
         name=translate(lang, "selection_only"),
         description=translate(lang, "selection_only_description"),
+        default=False,
+    )
+    use_visible: BoolProperty(
+        name=translate(lang, "visible_only"),
+        description=translate(lang, "visible_only_description"),
+        default=False,
+    )
+    use_active_collection: BoolProperty(
+        name=translate(lang, "active_collection_only"),
+        description=translate(lang, "active_collection_only_description"),
         default=False,
     )
     use_mesh_modifiers: BoolProperty(

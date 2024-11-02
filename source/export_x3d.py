@@ -196,6 +196,8 @@ def export(file,
            view_layer,
            use_mesh_modifiers=False,
            use_selection=True,
+           use_active_collection=False,
+           use_visible=False,
            use_triangulate=False,
            use_normals=False,
            use_hierarchy=True,
@@ -1467,10 +1469,19 @@ def export(file,
         bpy.data.images.tag(False)
 
         if use_selection:
-            objects = [obj for obj in view_layer.objects if obj.visible_get(view_layer=view_layer)
-                       and obj.select_get(view_layer=view_layer)]
+            if use_active_collection:
+                objects = [obj for obj in view_layer.active_layer_collection.collection.all_objects if obj.select_get()]
+            else:
+                objects = [obj for obj in view_layer.objects if obj.visible_get(view_layer=view_layer)
+                            and obj.select_get(view_layer=view_layer)]
         else:
-            objects = [obj for obj in view_layer.objects if obj.visible_get(view_layer=view_layer)]
+            if use_active_collection:
+                objects = view_layer.active_layer_collection.collection.all_objects
+            else:
+                objects = [obj for obj in view_layer.objects]
+
+        if use_visible:
+            objects = tuple(obj for obj in objects if obj.visible_get())
 
         print('Info: starting X3D export to %r...' % file.name)
         ident = ''
@@ -1535,6 +1546,8 @@ def save(context,
          filepath,
          *,
          use_selection=True,
+         use_active_collection=False,
+         use_visible=False,
          use_mesh_modifiers=False,
          use_triangulate=False,
          use_normals=False,
@@ -1566,6 +1579,8 @@ def save(context,
            context.view_layer,
            use_mesh_modifiers=use_mesh_modifiers,
            use_selection=use_selection,
+           use_active_collection=use_active_collection,
+           use_visible=use_visible,
            use_triangulate=use_triangulate,
            use_normals=use_normals,
            use_hierarchy=use_hierarchy,
