@@ -32,6 +32,7 @@ from bpy.props import (
     EnumProperty,
     FloatProperty,
     StringProperty,
+    CollectionProperty,
 )
 from bpy_extras.io_utils import (
     ImportHelper,
@@ -40,6 +41,11 @@ from bpy_extras.io_utils import (
     axis_conversion,
     path_reference_mode,
 )
+from bpy.types import (
+    Operator,
+    OperatorFileListElement,
+)
+
 from .translations import get_language, translate
 from .prefs import X3D_Preferences
 
@@ -56,7 +62,16 @@ class ImportX3D(bpy.types.Operator, ImportHelper):
     bl_options = {'PRESET', 'UNDO'}
 
     filename_ext = ".x3d"
+
     filter_glob: StringProperty(default="*.x3d;*.wrl", options={'HIDDEN'})
+
+    files: CollectionProperty(
+        name="File Path",
+        type=OperatorFileListElement,
+    )
+    directory: StringProperty(
+        subtype='DIR_PATH',
+    )
 
     file_unit: EnumProperty(
         name=translate(lang, "file_unit"),

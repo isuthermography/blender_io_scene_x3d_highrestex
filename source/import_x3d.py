@@ -3773,17 +3773,23 @@ def load_with_profiler(
 def load(context,
          filepath,
          *,
+         files=None,
+         directory=None,
          global_scale=1.0,
          global_matrix=None,
          as_collection=False
          ):
-    # loadWithProfiler(operator, context, filepath, global_matrix)
-    load_web3d(context, filepath,
-               PREF_FLAT=True,
-               PREF_CIRCLE_DIV=16,
-               global_scale=global_scale,
-               global_matrix=global_matrix,
-               as_collection=as_collection
-               )
+
+    paths = [os.path.join(directory, name.name) for name in files] or [filepath]
+
+    for file in paths:
+        # loadWithProfiler(operator, context, filepath, global_matrix)
+        load_web3d(context, file,
+                PREF_FLAT=True,
+                PREF_CIRCLE_DIV=16,
+                global_scale=global_scale,
+                global_matrix=global_matrix,
+                as_collection=as_collection
+                )
 
     return {'FINISHED'}
