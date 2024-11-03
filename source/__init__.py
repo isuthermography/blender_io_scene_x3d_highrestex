@@ -45,6 +45,9 @@ from bpy.types import (
     Operator,
     OperatorFileListElement,
 )
+from bpy_extras.io_utils import (
+    poll_file_object_drop,
+)
 
 from .translations import get_language, translate
 from .prefs import X3D_Preferences
@@ -388,6 +391,18 @@ class X3D_PT_import_general(bpy.types.Panel):
 
         layout.prop(operator, "as_collection")
 
+class IO_FH_X3D(bpy.types.FileHandler):
+    """File Handler for drag drop import of x3d files"""
+    bl_idname = "IO_FH_x3d"
+    bl_label = "x3d"
+    bl_import_operator = "import_scene.x3d"
+    bl_export_operator = "export_scene.x3d"
+    bl_file_extensions = ".x3d;.wrl"
+
+    @classmethod
+    def poll_drop(cls, context):
+        return poll_file_object_drop(context)
+
 
 def menu_func_import(self, context):
     self.layout.operator(ImportX3D.bl_idname,
@@ -407,6 +422,7 @@ classes = (
     ImportX3D,
     X3D_PT_import_general,
     X3D_PT_import_transform,
+    IO_FH_X3D,
     X3D_Preferences
 )
 
