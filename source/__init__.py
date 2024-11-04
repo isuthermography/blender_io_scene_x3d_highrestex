@@ -57,7 +57,7 @@ blender_version_higher_279 = blender_version[0] > 2 or (blender_version[0] == 2 
 
 lang = get_language()
 
-@orientation_helper(axis_forward='Z', axis_up='Y')
+@orientation_helper(axis_forward='-Z', axis_up='Y')
 class ImportX3D(bpy.types.Operator, ImportHelper):
     """Import an X3D or VRML2 file"""
     bl_idname = "import_scene.x3d"
@@ -225,7 +225,7 @@ class X3D_PT_export_geometry(bpy.types.Panel):
         layout.prop(operator, "use_compress")
 
 
-@orientation_helper(axis_forward='Z', axis_up='Y')
+@orientation_helper(axis_forward='-Z', axis_up='Y')
 class ExportX3D(bpy.types.Operator, ExportHelper):
     """Export selection to Extensible 3D file (.x3d)"""
     bl_idname = "export_scene.x3d"
