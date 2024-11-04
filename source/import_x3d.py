@@ -2984,6 +2984,30 @@ def appearance_Create(vrmlname, material, tex_node, ancestry, node, is_vcol):
 
         bpymat_wrap.base_color_texture.image = bpyima
 
+        # insert a mapping and texture coordinate node, so the texture is rotated correctly:
+        # https://projects.blender.org/blender/blender-addons/issues/101959
+        node_tree = bpymat_wrap.material.node_tree
+        for node in node_tree.nodes:
+            # search for image node
+            if node.type == 'TEX_IMAGE' and node.image == bpyima:
+                # append new nodes
+                node_tex_coord = node_tree.nodes.new("ShaderNodeTexCoord")
+                node_mapping = node_tree.nodes.new("ShaderNodeMapping")
+                node_mapping.vector_type = 'POINT'
+                node_mapping.inputs['Rotation'].default_value = (0, 0, 3.14159)  # 180 degrees in radians
+                node_tree.links.new(node_tex_coord.outputs["UV"], node_mapping.inputs["Vector"])
+                node_tree.links.new(
+                    node_mapping.outputs["Vector"],
+                    node.inputs["Vector"]
+                )
+                # adjust node locations
+                node_mapping.location.x -= 500
+                node_mapping.location.y += 300
+                node_tex_coord.location.x -= 700
+                node_tex_coord.location.y += 300
+                node.location.y -= 300
+                break
+
         # NOTE - not possible to handle x and y tiling individually.
         extension = "REPEAT" if repeatS or repeatT else "CLIP"
         bpymat_wrap.base_color_texture.extension = extension
