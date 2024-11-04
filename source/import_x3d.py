@@ -2776,6 +2776,9 @@ def importMesh_Box(geom, ancestry):
         0, 0, 0, 1, 1, 1, 1, 0,
         1, 0, 0, 0, 0, 1, 1, 1))
 
+    # flip normals, so they face outwards
+    bpymesh.flip_normals()
+
     bpymesh.update()
     return bpymesh
 
