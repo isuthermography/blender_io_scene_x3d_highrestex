@@ -2279,6 +2279,12 @@ def importMesh_Extrusion(geom, ancestry):
     ns = len(spine)
     spine = [Vector(s) for s in spine]
     nsf = ns if spine_closed else ns - 1
+    # fill up scale with the last value of scale if the length is different to spine to prevent index error later on
+    # as extrusion works by mapping scale values to the spine values
+    # https://projects.blender.org/extensions/io_scene_x3d/issues/29
+    if scale:
+        while len(scale) < len(spine):
+            scale.append(scale[-1])
 
     # This will be used for fallback, where the current spine point joins
     # two collinear spine segments. No need to recheck the case of the
