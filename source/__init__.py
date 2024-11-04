@@ -104,6 +104,21 @@ class ImportX3D(bpy.types.Operator, ImportHelper):
         default=False,
     )
 
+    solidify: BoolProperty(
+        name=translate(lang, "solidify"),
+        description=translate(lang, "solidify_description"),
+        default=False,
+    )
+
+    solidify_value: FloatProperty(
+        name=translate(lang, "solidify_value"),
+        min=-10.0, max=10.0,
+        default=0.1,
+        precision=2,
+        step=1.0,
+        description=translate(lang, "solidify_value_description"),
+    )
+
     def execute(self, context):
         from . import import_x3d
 
@@ -367,6 +382,7 @@ class X3D_PT_import_transform(bpy.types.Panel):
         layout.prop(operator, "axis_forward")
         layout.prop(operator, "axis_up")
 
+
 class X3D_PT_import_general(bpy.types.Panel):
     bl_space_type = 'FILE_BROWSER'
     bl_region_type = 'TOOL_PROPS'
@@ -390,6 +406,35 @@ class X3D_PT_import_general(bpy.types.Panel):
         operator = sfile.active_operator
 
         layout.prop(operator, "as_collection")
+
+
+class X3D_PT_import_mesh(bpy.types.Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOL_PROPS'
+    bl_label = "Mesh"
+    bl_parent_id = "FILE_PT_operator"
+
+    @classmethod
+    def poll(cls, context):
+        sfile = context.space_data
+        operator = sfile.active_operator
+
+        return operator.bl_idname == "IMPORT_SCENE_OT_x3d"
+
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
+
+        sfile = context.space_data
+        operator = sfile.active_operator
+
+        layout.prop(operator, "solidify")
+        sub = layout.row()
+        sub.enabled = operator.solidify == True
+        sub.prop(operator, "solidify_value")
+
 
 class IO_FH_X3D(bpy.types.FileHandler):
     """File Handler for drag drop import of x3d files"""
@@ -422,6 +467,7 @@ classes = (
     ImportX3D,
     X3D_PT_import_general,
     X3D_PT_import_transform,
+    X3D_PT_import_mesh,
     IO_FH_X3D,
     X3D_Preferences
 )

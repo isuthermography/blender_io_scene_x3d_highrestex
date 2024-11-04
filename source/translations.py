@@ -78,6 +78,10 @@ def get_translation():
                     "\nThis feature may get fixed eventually, but no support expected",
             "as_collection": "Import as collection",
             "as_collection_description": "Import the file as a new collection inside the active collection",
+            "solidify": "Solidify",
+            "solidify_description": "Solidify objects by adding a solify modifier to each of the objects",
+            "solidify_value": "Solidify Value",
+            "solidify_value_description": "Value used as width for the solidify modifier"
         },
         "de_DE": {
             "import": "Importiere X3D/VRML2",
@@ -123,6 +127,10 @@ def get_translation():
                     "\nDiese Funktion könnte möglicherweise behoben werden, aber es wird keine Unterstützung erwartet",
             "as_collection": "Als Sammlung importieren",
             "as_collection_description": "Importieren Sie die Datei als neue Sammlung innerhalb der aktiven Sammlung",
+            "solidify": "Verfestigen",
+            "solidify_description": "Objekte verfestigen, indem jedem Objekt ein Verfestigungsmodifikator hinzugefügt wird",
+            "solidify_value": "Verfestigungswert",
+            "solidify_value_description": "Wert, der als Breite für den Verfestigungsmodifikator verwendet wird"
         },
         "fr_FR": {
             "import": "Importer X3D/VRML2",
@@ -168,6 +176,10 @@ def get_translation():
                                           "\nCette fonctionnalité pourrait être corrigée éventuellement, mais aucun support n'est attendu",
             "as_collection": "Importer en tant que collection",
             "as_collection_description": "Importer le fichier en tant que nouvelle collection dans la collection active",
+            "solidify": "Solidifier",
+            "solidify_description": "Solidifier les objets en ajoutant un modificateur de solidité à chacun des objets",
+            "solidify_value": "Valeur de solidité",
+            "solidify_value_description": "Valeur utilisée comme largeur pour le modificateur de solidité"
         },
         "es_ES": {
             "import": "Importar X3D/VRML2",
@@ -213,6 +225,10 @@ def get_translation():
                                           "\nEsta función podría solucionarse eventualmente, pero no se espera soporte",
             "as_collection": "Importar como colección",
             "as_collection_description": "Importar el archivo como una nueva colección dentro de la colección activa",
+            "solidify": "Solidificar",
+                "solidify_description": "Solidificar objetos agregando un modificador de solidificación a cada uno de los objetos",
+                "solidify_value": "Valor de solidificación",
+                "solidify_value_description": "Valor usado como ancho para el modificador de solidificación"
         },
         "it_IT": {
             "import": "Importa X3D/VRML2",
@@ -258,6 +274,10 @@ def get_translation():
                                           "\nQuesta funzione potrebbe essere risolta in futuro, ma non è previsto alcun supporto",
             "as_collection": "Importa come collezione",
             "as_collection_description": "Importa il file come una nuova collezione all'interno della collezione attiva",
+            "solidify": "Solidificare",
+            "solidify_description": "Solidifica gli oggetti aggiungendo un modificatore di solidità a ciascun oggetto",
+            "solidify_value": "Valore di solidità",
+            "solidify_value_description": "Valore usato come larghezza per il modificatore di solidità"
         },
         "ru_RU": {
             "import": "Импорт X3D/VRML2",
@@ -303,6 +323,10 @@ def get_translation():
                                           "\nЭта функция может быть исправлена в будущем, но поддержки не ожидается",
             "as_collection": "Импортировать как коллекцию",
             "as_collection_description": "Импортировать файл как новую коллекцию внутри активной коллекции",
+            "solidify": "Упрочнить",
+                "solidify_description": "Укрепляет объекты, добавляя к каждому объекту модификатор упрочнения",
+                "solidify_value": "Значение упрочнения",
+                "solidify_value_description": "Значение, используемое в качестве ширины для модификатора упрочнения"
         },
         "zh_HANS": {
             "import": "导入 X3D/VRML2",
@@ -348,6 +372,10 @@ def get_translation():
                                           "\n此功能可能会在将来修复，但不提供支持",
             "as_collection": "作为集合导入",
             "as_collection_description": "将文件作为一个新的集合导入到活动集合中",
+            "solidify": "实体化",
+            "solidify_description": "通过为每个对象添加实体化修改器来使对象实体化",
+            "solidify_value": "实体化值",
+            "solidify_value_description": "用作实体化修改器宽度的值",
         },
         "ja_JP": {
             "import": "インポート X3D/VRML2",
@@ -393,6 +421,10 @@ def get_translation():
                                           "\nこの機能は将来的に修正される可能性がありますが、サポートは期待されていません。",
             "as_collection": "コレクションとしてインポート",
             "as_collection_description": "ファイルをアクティブなコレクション内に新しいコレクションとしてインポートします",
+            "solidify": "ソリディファイ",
+            "solidify_description": "各オブジェクトにソリディファイモディファイアを追加してオブジェクトをソリディファイする",
+            "solidify_value": "ソリディファイ値",
+            "solidify_value_description": "ソリディファイモディファイアの幅として使用する値"
         },
         "hi_IN": {
             "import": "आयात X3D/VRML2",
@@ -438,6 +470,10 @@ def get_translation():
                                           "\nयह सुविधा भविष्य में ठीक हो सकती है, लेकिन कोई समर्थन अपेक्षित नहीं है",
             "as_collection": "संग्रह के रूप में आयात करें",
             "as_collection_description": "सक्रिय संग्रह के भीतर फ़ाइल को एक नए संग्रह के रूप में आयात करें",
+            "solidify": "ठोस बनाएं",
+                "solidify_description": "प्रत्येक वस्तु में ठोस संशोधक जोड़कर वस्तुओं को ठोस बनाएं",
+                "solidify_value": "ठोस मान",
+                "solidify_value_description": "ठोस संशोधक की चौड़ाई के रूप में प्रयुक्त मान"
         },
         "ar_AR": {
             "import": "استيراد X3D/VRML2",
@@ -483,5 +519,9 @@ def get_translation():
                                           "\nقد يتم إصلاح هذه الميزة في المستقبل، ولكن لا يُتوقع دعمها",
             "as_collection": "استيراد كـ مجموعة",
             "as_collection_description": "استيراد الملف كمجموعة جديدة داخل المجموعة النشطة",
+            "solidify": "تصلب",
+                "solidify_description": "تصلب الكائنات عن طريق إضافة معدل تصلب لكل كائن",
+                "solidify_value": "قيمة التصلب",
+                "solidify_value_description": "القيمة المستخدمة كعرض لمعدل التصلب"
         }
     }

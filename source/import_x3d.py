@@ -3160,7 +3160,7 @@ def appearance_LoadPixelTexture(pixelTexture, ancestry):
 def importShape_ProcessObject(
         bpycollection, vrmlname, bpydata, geom, geom_spec, node,
         bpymat, has_alpha, texmtx, ancestry,
-        global_matrix):
+        global_matrix, solidify, solidify_value):
 
     vrmlname += "_" + geom_spec
     bpydata.name = vrmlname
@@ -3204,6 +3204,11 @@ def importShape_ProcessObject(
     # bpymesh.transform(getFinalMatrix(node))
     bpyob = node.blendObject = bpy.data.objects.new(vrmlname, bpydata)
     bpyob.matrix_world = getFinalMatrix(node, None, ancestry, global_matrix)
+    # solidify modifier
+    if solidify and bpyob.type == 'MESH':
+        solidify_modifier = bpyob.modifiers.new(name="Solidify", type='SOLIDIFY')
+        solidify_modifier.thickness = solidify_value
+        solidify_modifier.offset = 0
     bpycollection.objects.link(bpyob)
     bpyob.select_set(True)
 
@@ -3274,7 +3279,7 @@ geometry_importers = {
 }
 
 
-def importShape(bpycollection, node, ancestry, global_matrix):
+def importShape(bpycollection, node, ancestry, global_matrix, solidify, solidify_value):
     # Under Shape, we can only have Appearance, MetadataXXX and a geometry node
     def isGeometry(spec):
         return spec != "Appearance" and not spec.startswith("Metadata")
@@ -3334,7 +3339,7 @@ def importShape(bpycollection, node, ancestry, global_matrix):
         importShape_ProcessObject(
             bpycollection, vrmlname, bpydata, geom, geom_spec,
             node, bpymat, tex_has_alpha, texmtx,
-            ancestry, global_matrix)
+            ancestry, global_matrix, solidify, solidify_value)
     else:
         print('\tImportX3D warning: unsupported type "%s"' % geom_spec)
 
@@ -3671,7 +3676,9 @@ def load_web3d(
         global_scale=1.0,
         global_matrix=None,
         HELPER_FUNC=None,
-        as_collection=False
+        as_collection=False,
+        solidify=False,
+        solidify_value=0.1
 ):
     # Used when adding blender primitives
     GLOBALS['CIRCLE_DETAIL'] = PREF_CIRCLE_DIV
@@ -3725,7 +3732,7 @@ def load_web3d(
             # by an external script. - gets first pick
             pass
         if spec == 'Shape':
-            importShape(bpycollection, node, ancestry, global_matrix)
+            importShape(bpycollection, node, ancestry, global_matrix, solidify, solidify_value)
         elif spec in {'PointLight', 'DirectionalLight', 'SpotLight'}:
             importLamp(bpycollection, node, spec, ancestry, global_matrix)
         elif spec == 'Viewpoint':
@@ -3826,7 +3833,9 @@ def load(context,
          directory=None,
          global_scale=1.0,
          global_matrix=None,
-         as_collection=False
+         as_collection=False,
+         solidify=False,
+         solidify_value=0.1
          ):
 
     paths = [os.path.join(directory, name.name) for name in files] or [filepath]
@@ -3838,7 +3847,9 @@ def load(context,
                 PREF_CIRCLE_DIV=16,
                 global_scale=global_scale,
                 global_matrix=global_matrix,
-                as_collection=as_collection
+                as_collection=as_collection,
+                solidify=solidify,
+                solidify_value=solidify_value
                 )
 
     return {'FINISHED'}
