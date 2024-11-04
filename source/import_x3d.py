@@ -3180,7 +3180,15 @@ def importShape_ProcessObject(
 
 def importText(geom, ancestry):
     fmt = geom.getChildBySpec('FontStyle')
-    size = fmt.getFieldAsFloat("size", 1, ancestry) if fmt else 1.
+    if fmt:
+        size = fmt.getFieldAsFloat("size", 1, ancestry)
+        horizontal_alignment = fmt.getFieldAsString("justify", 1, ancestry)
+        line_height = fmt.getFieldAsFloat("spacing", 1, ancestry)
+    else:
+        size = 1
+        horizontal_alignment = "BEGIN"
+        line_height = 1
+
     body = geom.getFieldAsString("string", None, ancestry)
     if body is not None:
         # X3D.
@@ -3198,6 +3206,14 @@ def importText(geom, ancestry):
     bpytext.offset_y = - size
     bpytext.body = "\n".join(body)
     bpytext.size = size
+    bpytext.space_line = line_height
+    if horizontal_alignment == "BEGIN":
+        bpytext.align_x = "LEFT"
+    elif horizontal_alignment == "MIDDLE":
+        bpytext.align_x = "CENTER"
+    elif horizontal_alignment == "END":
+        bpytext.align_x = "RIGHT"
+
     return bpytext
 
 
