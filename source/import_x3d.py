@@ -2229,7 +2229,7 @@ def importMesh_ElevationGrid(geom, ancestry):
     uvs = [i for poly in bpymesh.polygons
            for vidx in poly.vertices
            for i in uvs[vidx]]
-    d.foreach_set('uv', uv)
+    d.foreach_set('uv', uvs)
 
     bpymesh.validate()
     bpymesh.update()
