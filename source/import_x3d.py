@@ -2869,6 +2869,7 @@ def appearance_CreateDefaultMaterial():
 
 def appearance_LoadImageTextureFile(ima_urls, node):
     bpyima = None
+
     for f in ima_urls:
         dirname = os.path.dirname(node.getFilename())
         bpyima = image_utils.load_image(f, dirname,
@@ -2935,7 +2936,7 @@ def appearance_LoadTexture(tex_node, ancestry, node):
         return bpyima
 
     # No cached texture, load it.
-    if tex_node.getSpec() == 'ImageTexture':
+    if tex_node.getSpec() == 'ImageTexture' or tex_node.getSpec() == 'MovieTexture':
         bpyima = appearance_LoadImageTexture(tex_node, ancestry, node)
     else:  # PixelTexture
         bpyima = appearance_LoadPixelTexture(tex_node, ancestry)
@@ -2977,6 +2978,56 @@ def appearance_MakeDescCacheKey(material, tex_node):
         return None  # Desc-based caching is off
 
 
+def rotate_image_texture(bpymat_wrap, bpyima):
+    node_tree = bpymat_wrap.material.node_tree
+    for node in node_tree.nodes:
+        # search for image node
+        if node.type == 'TEX_IMAGE' and node.image == bpyima:
+            # append new nodes
+            node_tex_coord = node_tree.nodes.new("ShaderNodeTexCoord")
+            node_mapping = node_tree.nodes.new("ShaderNodeMapping")
+            node_mapping.vector_type = 'POINT'
+            node_mapping.inputs['Rotation'].default_value = (0, 0, 3.14159)  # 180 degrees in radians
+            node_tree.links.new(node_tex_coord.outputs["UV"], node_mapping.inputs["Vector"])
+            node_tree.links.new(
+                node_mapping.outputs["Vector"],
+                node.inputs["Vector"]
+            )
+            # adjust node locations
+            node_mapping.location.x -= 500
+            node_mapping.location.y += 300
+            node_tex_coord.location.x -= 700
+            node_tex_coord.location.y += 300
+            node.location.y -= 300
+            break
+    return bpymat_wrap
+
+
+def apply_video_texture_settings(bpymat_wrap, bpyima, tex_node, ancestry):
+    loop = tex_node.getFieldAsBool('loop', False, ancestry)
+    start_time_seconds = tex_node.getFieldAsFloat('startTime', 0.0, ancestry)  # 0: play at start
+    stop_time_seconds = tex_node.getFieldAsFloat('stopTime', -1.0, ancestry)  # -1: play to end
+    # unfortunately speed can't be applied to image texture node (yet)
+    # speed = tex_node.getFieldAsFloat('speed', 1.0, ancestry)
+
+    fps = bpy.context.scene.render.fps
+    start_frame = int(0 + start_time_seconds * fps)
+    end_frame = bpyima.frame_duration if stop_time_seconds == - 1 else int((bpyima.frame_duration / fps) * stop_time_seconds)
+
+    node_tree = bpymat_wrap.material.node_tree
+    for node in node_tree.nodes:
+        # search for image node
+        if node.type == 'TEX_IMAGE' and node.image == bpyima:
+            image_user = node.image_user
+            image_user.use_auto_refresh = True
+            image_user.use_cyclic = loop
+            image_user.frame_start = start_frame
+            image_user.frame_duration = end_frame
+            node.location.y -= 300
+            break
+    return bpymat_wrap
+
+
 def appearance_Create(vrmlname, material, tex_node, ancestry, node, is_vcol):
     # Creates a Blender material object from appearance
     bpyima = None
@@ -2996,29 +3047,10 @@ def appearance_Create(vrmlname, material, tex_node, ancestry, node, is_vcol):
 
         bpymat_wrap.base_color_texture.image = bpyima
 
-        # insert a mapping and texture coordinate node, so the texture is rotated correctly:
-        # https://projects.blender.org/blender/blender-addons/issues/101959
-        node_tree = bpymat_wrap.material.node_tree
-        for node in node_tree.nodes:
-            # search for image node
-            if node.type == 'TEX_IMAGE' and node.image == bpyima:
-                # append new nodes
-                node_tex_coord = node_tree.nodes.new("ShaderNodeTexCoord")
-                node_mapping = node_tree.nodes.new("ShaderNodeMapping")
-                node_mapping.vector_type = 'POINT'
-                node_mapping.inputs['Rotation'].default_value = (0, 0, 3.14159)  # 180 degrees in radians
-                node_tree.links.new(node_tex_coord.outputs["UV"], node_mapping.inputs["Vector"])
-                node_tree.links.new(
-                    node_mapping.outputs["Vector"],
-                    node.inputs["Vector"]
-                )
-                # adjust node locations
-                node_mapping.location.x -= 500
-                node_mapping.location.y += 300
-                node_tex_coord.location.x -= 700
-                node_tex_coord.location.y += 300
-                node.location.y -= 300
-                break
+        if tex_node.getSpec() == 'ImageTexture':
+            # insert a mapping and texture coordinate node, so the texture is rotated correctly:
+            # https://projects.blender.org/blender/blender-addons/issues/101959
+            bpymat_wrap = rotate_image_texture(bpymat_wrap, bpyima)
 
         # NOTE - not possible to handle x and y tiling individually.
         extension = "REPEAT" if repeatS or repeatT else "CLIP"
@@ -3028,6 +3060,9 @@ def appearance_Create(vrmlname, material, tex_node, ancestry, node, is_vcol):
         if tex_has_alpha:
             bpymat_wrap.alpha_texture.image = bpyima
             bpymat_wrap.alpha_texture.extension = extension
+
+        if tex_node.getSpec() == 'MovieTexture':
+            bpymat_wrap = apply_video_texture_settings(bpymat_wrap, bpyima, tex_node, ancestry)
 
     return (bpymat_wrap.material, bpyima, tex_has_alpha)
 
@@ -3075,8 +3110,8 @@ def importShape_LoadAppearance(vrmlname, appr, ancestry, node, is_vcol):
     if appr.reference and appr.getRealNode().parsed:
         return appearance_ExpandCachedMaterial(appr.getRealNode().parsed)
 
-    tex_node = appr.getChildBySpec(('ImageTexture', 'PixelTexture'))
-    # Other texture nodes are: MovieTexture, MultiTexture
+    tex_node = appr.getChildBySpec(('ImageTexture', 'PixelTexture', 'MovieTexture'))
+    # Other texture nodes are: MultiTexture
     material = appr.getChildBySpec('Material')
     # We're ignoring FillProperties, LineProperties, and shaders
 
