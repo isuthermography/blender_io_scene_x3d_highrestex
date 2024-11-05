@@ -2809,6 +2809,12 @@ def appearance_CreateMaterial(vrmlname, mat, ancestry, is_vcol):
 
     emit_color = mat.getFieldAsFloatTuple('emissiveColor', [0.0, 0.0, 0.0], ancestry)
     bpymat_wrap.emission_color = emit_color
+    # set emission strength to 1 if there is an emissive color
+    if emit_color != [0.0, 0.0, 0.0]:
+        node_tree = bpymat.node_tree
+        bsdf_node = node_tree.nodes.get("Principled BSDF")
+        if bsdf_node:
+            bsdf_node.inputs["Emission Strength"].default_value = 1.0
 
     # NOTE - 'shininess' is being handled as 1 - roughness for now.
     shininess = mat.getFieldAsFloat('shininess', 0.2, ancestry)
@@ -3164,6 +3170,12 @@ def importShape_ProcessObject(
 
     vrmlname += "_" + geom_spec
     bpydata.name = vrmlname
+
+    # curves like IndexedLineSet can also have a material,
+    # although it won't be visible until the curve has some depth
+    if type(bpydata) == bpy.types.Curve:
+        if bpymat:
+            bpydata.materials.append(bpymat)
 
     if type(bpydata) == bpy.types.Mesh:
         # solid, as understood by the spec, is always true in Blender
