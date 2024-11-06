@@ -15,6 +15,8 @@ from itertools import chain
 
 texture_cache = {}
 material_cache = {}
+font_variants_cache = {}
+current_file_path = None
 conversion_scale = 1.0
 
 EPSILON = 0.0000001  # Very crude.
@@ -3259,8 +3261,26 @@ def importShape_ProcessObject(
     bpycollection.objects.link(bpyob)
     bpyob.select_set(True)
 
+    if bpyob.type == 'FONT':
+        process_font_object(bpyob)
+
     if DEBUG:
         bpyob["source_line_no"] = geom.lineno
+
+
+def process_font_object(bpyob):
+    """Set style attributes of text object"""
+    if bpyob.data["bold"] or (bpyob.data["italic"]):
+        bpy.context.view_layer.objects.active = bpyob
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.font.select_all()
+        if bpyob.data["bold"]:
+            bpy.ops.font.style_toggle(style='BOLD')
+            del bpyob.data["bold"]
+        if bpyob.data["italic"]:
+            bpy.ops.font.style_toggle(style='ITALIC')
+            del bpyob.data["italic"]
+        bpy.ops.object.mode_set(mode='OBJECT')
 
 
 def importText(geom, ancestry):
@@ -3269,10 +3289,14 @@ def importText(geom, ancestry):
         size = fmt.getFieldAsFloat("size", 1, ancestry)
         horizontal_alignment = fmt.getFieldAsString("justify", 1, ancestry)
         line_height = fmt.getFieldAsFloat("spacing", 1, ancestry)
+        style = fmt.getFieldAsString("style", None, ancestry)
+        family = fmt.getFieldAsString("family", None, ancestry)
     else:
         size = 1
         horizontal_alignment = "BEGIN"
         line_height = 1
+        style = None
+        family = None
 
     body = geom.getFieldAsString("string", None, ancestry)
     if body is not None:
@@ -3299,7 +3323,181 @@ def importText(geom, ancestry):
     elif horizontal_alignment == "END":
         bpytext.align_x = "RIGHT"
 
+    # set style as temp attribute for later, as we need an object to set it
+    if style is not None:
+        if style == "BOLD":
+            bpytext["bold"] = True
+            bpytext["italic"] = False
+        elif style == "ITALIC":
+            bpytext["bold"] = False
+            bpytext["italic"] = True
+        elif style == "BOLDITALIC":
+            bpytext["bold"] = True
+            bpytext["italic"] = True
+        else:
+            bpytext["bold"] = False
+            bpytext["italic"] = False
+
+    # search for and set font family
+    if family is not None:
+        font_path = search_for_font_file(family)
+        if font_path is not None:
+            if font_path["regular"] not in bpy.data.fonts:
+                font_regular = bpy.data.fonts.load(font_path["regular"])
+            else:
+                font_regular = bpy.data.fonts[font_path["regular"]]
+            if font_path["bold"] not in bpy.data.fonts:
+                font_bold = bpy.data.fonts.load(font_path["bold"])
+            else:
+                font_bold = bpy.data.fonts[font_path["bold"]]
+            if font_path["italic"] not in bpy.data.fonts:
+                font_italic = bpy.data.fonts.load(font_path["italic"])
+            else:
+                font_italic = bpy.data.fonts[font_path["italic"]]
+            if font_path["bold_italic"] not in bpy.data.fonts:
+                font_bolditalic = bpy.data.fonts.load(font_path["bold_italic"])
+            else:
+                font_bolditalic = bpy.data.fonts[font_path["bold_italic"]]
+            bpytext.font = font_regular
+            bpytext.font_bold = font_bold
+            bpytext.font_italic = font_italic
+            bpytext.font_bold_italic = font_bolditalic
+
     return bpytext
+
+
+def search_for_font_file(font_name_spec):
+    """Searches cached and system font files for supplied font family name"""
+    # check cached fonts beforehand
+    if font_name_spec in font_variants_cache:
+        return font_variants_cache[font_name_spec]
+
+    # well, font not yet cached, thus do a search
+    import platform
+    from pathlib import Path
+    def get_font_paths():
+        """Determine platform-specific font paths."""
+
+        if platform.system() == "Windows":
+            font_paths = [
+                "C:\\Windows\\Fonts",
+                str(Path.home() / "AppData" / "Local" / "Microsoft" / "Windows" / "Fonts")
+            ]
+        elif platform.system() == "Darwin":  # macOS
+            font_paths = ["/Library/Fonts", "~/Library/Fonts"]
+        elif platform.system() == "Linux":
+            font_paths = ["/usr/share/fonts", "~/.fonts", "~/.local/share/fonts"]
+        else:
+            font_paths = []
+        return font_paths
+
+    def load_all_fonts(font_path):
+        """Cache all font files in the specified directory."""
+
+        valid_extensions = [".ttf", ".otf", ".woff", ".woff2"]
+        font_files = []
+
+        for root, _, files in os.walk(os.path.expanduser(font_path)):
+            for file in files:
+                if any(file.lower().endswith(ext) for ext in valid_extensions):
+                    font_files.append(os.path.join(root, file))
+
+        return font_files
+
+    def find_font_variants(font_name, curr_dir):
+        """Find font variants with fallback to regular font variant if others are not found."""
+
+        style_keywords = {
+            "regular": ["regular", "book", "normal"],
+            "bold": ["bold", "b", "bd"],
+            "italic": ["italic", "oblique", "i"],
+            "bold_italic": ["bolditalic", "boldoblique", "bi"]
+        }
+
+        font_paths = get_font_paths()
+
+        def find_font_by_style(indexed_font_files, font_name_str, keywords, allow_no_keyword=False):
+            """Search for a specific style of font in the provided files list."""
+
+            # Case A: Exact match without keyword (only if `allow_no_keyword` is True)
+            # this will hopefully always find the regular font variant
+            if allow_no_keyword:
+                for font in indexed_font_files:
+                    if Path(font).stem.lower() == font_name_str.lower():
+                        return font
+
+            # Case B: Exact match with style keyword in the filename
+            # this will most likely find all font variants
+            for font in font_files:
+                for keyword in keywords:
+                    if Path(font).stem.lower() == (font_name + keyword).lower():
+                        return font
+
+            # Case C: Name and style keyword somewhere in the filename
+            # not ideal, but a fallback to get a somewhat similar font (at least by name)
+            for font in indexed_font_files:
+                if font_name_str.lower() in Path(font).stem.lower() and \
+                    any(keyword in Path(font).stem.lower() for keyword in keywords):
+                    return font
+
+            return None
+
+        fonts = {"regular": None, "bold": None, "italic": None, "bold_italic": None}
+
+        # Try finding each style in each path until a match is found.
+        fonts_found = False
+        for font_path in font_paths:
+            font_files = load_all_fonts(font_path)
+            if not font_files:
+                continue
+
+            # Search for each font style
+            fonts["regular"] = fonts["regular"] or find_font_by_style(font_files, font_name, style_keywords["regular"],
+                                                                      allow_no_keyword=True)
+            fonts["bold"] = fonts["bold"] or find_font_by_style(font_files, font_name, style_keywords["bold"])
+            fonts["italic"] = fonts["italic"] or find_font_by_style(font_files, font_name, style_keywords["italic"])
+            fonts["bold_italic"] = fonts["bold_italic"] or find_font_by_style(font_files, font_name,
+                                                                              style_keywords["bold_italic"])
+
+            # If at least one style is found, no need to check further paths
+            # as the font variants are usually installed in the same dir
+            fonts_found = any(value is not None for value in fonts.values())
+            if fonts_found:
+                break
+
+        # Fallback: try a fast lookup of the font name inside the current directory
+        # we don't want to do a full search, as the size of the directory can be quite large and thus indexing would take too much time
+        if not fonts_found:
+            for extension in [".ttf", ".otf", ".woff", ".woff2"]:
+                font_file = Path(curr_dir + font_name + extension)
+                if font_file.is_file():
+                    fonts["regular"] = fonts["bold"] = fonts["italic"] = fonts["bold_italic"] = font_file
+                    return fonts
+
+        # Fallback: replace None entries with the regular font if available
+        regular_font = fonts["regular"]
+        if regular_font is not None:
+            for style in fonts:
+                if fonts[style] is None:
+                    fonts[style] = regular_font
+            return fonts
+
+        if all(fonts.values()):
+            return fonts
+
+        print("No font file found")
+        return None
+
+    try:
+        font_variants = find_font_variants(font_name_spec, current_file_path)
+    except Exception as e:
+        print(e)
+        font_variants = None
+
+    # save to cache, so it can be reused for other text objects
+    font_variants_cache[font_name_spec] = font_variants
+
+    return font_variants
 
 
 # -----------------------------------------------------------------------------------
@@ -3727,6 +3925,9 @@ def load_web3d(
         solidify=False,
         solidify_value=0.1
 ):
+
+    global current_file_path
+    current_file_path = filepath
     # Used when adding blender primitives
     GLOBALS['CIRCLE_DETAIL'] = PREF_CIRCLE_DIV
 
