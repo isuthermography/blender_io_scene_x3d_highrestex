@@ -3324,19 +3324,16 @@ def importText(geom, ancestry):
         bpytext.align_x = "RIGHT"
 
     # set style as temp attribute for later, as we need an object to set it
+    bpytext["bold"] = False
+    bpytext["italic"] = False
     if style is not None:
         if style == "BOLD":
             bpytext["bold"] = True
-            bpytext["italic"] = False
         elif style == "ITALIC":
-            bpytext["bold"] = False
             bpytext["italic"] = True
         elif style == "BOLDITALIC":
             bpytext["bold"] = True
             bpytext["italic"] = True
-        else:
-            bpytext["bold"] = False
-            bpytext["italic"] = False
 
     # search for and set font family
     if family is not None:
