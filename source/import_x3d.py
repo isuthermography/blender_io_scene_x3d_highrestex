@@ -2831,8 +2831,7 @@ def appearance_CreateMaterial(vrmlname, mat, ancestry, is_vcol):
     alpha = 1.0 - mat.getFieldAsFloat('transparency', 0.0, ancestry)
     bpymat_wrap.alpha = alpha
     if alpha < 1.0:
-        bpymat.blend_method = "BLEND"
-        bpymat.shadow_method = "HASHED"
+        bpymat.surface_render_method = "BLENDED"
 
     if is_vcol:
         node_vertex_color = bpymat.node_tree.nodes.new("ShaderNodeVertexColor")
@@ -3228,9 +3227,8 @@ def importShape_ProcessObject(
             bpydata.materials.append(bpymat)
 
         if bpydata.uv_layers:
-            if has_alpha and bpymat:  # set the faces alpha flag?
-                bpymat.blend_method = 'BLEND'
-                bpymat.shadow_method = 'HASHED'
+            if has_alpha and bpymat:
+                bpymat.surface_render_method = "BLENDED"
 
             if texmtx:
                 # Apply texture transform?
