@@ -1572,7 +1572,7 @@ def translateTexTransform(node, ancestry):
         cent_mat = cent_imat = None
 
     if rot:
-        rot_mat = Matrix.Rotation(rot, 4, 'Z')  # translateRotation(rot)
+        rot_mat = Matrix.Rotation(rot * (-1), 4, 'Z')  # translateRotation(rot), -1 because we need -Z axis rotation
     else:
         rot_mat = None
 
@@ -2988,7 +2988,7 @@ def rotate_image_texture(bpymat_wrap, bpyima):
             node_tex_coord = node_tree.nodes.new("ShaderNodeTexCoord")
             node_mapping = node_tree.nodes.new("ShaderNodeMapping")
             node_mapping.vector_type = 'POINT'
-            node_mapping.inputs['Rotation'].default_value = (0, 0, 3.14159)  # 180 degrees in radians
+            node_mapping.inputs['Rotation'].default_value = (0, 0, 0)
             node_tree.links.new(node_tex_coord.outputs["UV"], node_mapping.inputs["Vector"])
             node_tree.links.new(
                 node_mapping.outputs["Vector"],
@@ -3049,8 +3049,7 @@ def appearance_Create(vrmlname, material, tex_node, ancestry, node, is_vcol):
         bpymat_wrap.base_color_texture.image = bpyima
 
         if tex_node.getSpec() == 'ImageTexture':
-            # insert a mapping and texture coordinate node, so the texture is rotated correctly:
-            # https://projects.blender.org/blender/blender-addons/issues/101959
+            # insert a mapping and texture coordinate node, for adaptability by the user
             bpymat_wrap = rotate_image_texture(bpymat_wrap, bpyima)
 
         # NOTE - not possible to handle x and y tiling individually.
