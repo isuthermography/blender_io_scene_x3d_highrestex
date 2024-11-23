@@ -177,6 +177,28 @@ class X3D_PT_export_include(bpy.types.Panel):
         col.enabled = not blender_version_higher_279
         col.prop(operator, "use_h3d")
 
+class X3D_PT_export_external_resource(bpy.types.Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOL_PROPS'
+    bl_label = "Image Textures"
+    bl_parent_id = "FILE_PT_operator"
+
+    @classmethod
+    def poll(cls, context):
+        sfile = context.space_data
+        operator = sfile.active_operator
+
+        return operator.bl_idname == "EXPORT_SCENE_OT_x3d"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
+
+        sfile = context.space_data
+        operator = sfile.active_operator
+
+        layout.prop(operator, "path_mode")
 
 class X3D_PT_export_transform(bpy.types.Panel):
     bl_space_type = 'FILE_BROWSER'
@@ -211,6 +233,8 @@ class X3D_PT_export_transform(bpy.types.Panel):
 
         layout.prop(operator, "axis_forward")
         layout.prop(operator, "axis_up")
+
+
 
 
 class X3D_PT_export_geometry(bpy.types.Panel):
@@ -464,6 +488,7 @@ classes = (
     X3D_PT_export_include,
     X3D_PT_export_transform,
     X3D_PT_export_geometry,
+    X3D_PT_export_external_resource,
     ImportX3D,
     X3D_PT_import_general,
     X3D_PT_import_transform,

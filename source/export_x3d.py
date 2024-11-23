@@ -7,14 +7,18 @@
 # - Doesn't handle multiple UV textures on a single mesh (create a mesh for each texture).
 # - Can't get the texture array associated with material * not the UV ones.
 
+import logging
+logger = logging.getLogger("export_x3d")
+
 import math
-import os
+
 
 import bpy
 import mathutils
 
 from bpy_extras.io_utils import create_derived_objects
 
+from .material_node_search import imageTexture_in_material
 
 # h3d defines
 H3D_TOP_LEVEL = 'TOP_LEVEL_TI'
@@ -185,6 +189,8 @@ def h3d_is_object_view(scene, obj):
     return False
 
 
+
+
 # -----------------------------------------------------------------------------
 # Functions for writing output file
 # -----------------------------------------------------------------------------
@@ -206,6 +212,7 @@ def export(file,
            name_decorations=True,
            ):
 
+    logger.info("export with path_mode: %r" % path_mode)
     # -------------------------------------------------------------------------
     # Global Setup
     # -------------------------------------------------------------------------
@@ -259,6 +266,19 @@ def export(file,
 
     # store files to copy
     copy_set = set()
+    import os, os.path
+    if path_mode == 'COPY':
+        # create a per-export temporary folder. image data which does not
+        # exist on disk yet will be saved here from which it can be copied by
+        # the bpy_extras.io_utils.path_reference_copy utility
+        blender_tempfolder = bpy.app.tempdir
+        import uuid
+        temporary_image_directory = os.path.join(blender_tempfolder,uuid.uuid4().hex)
+        os.mkdir(temporary_image_directory)
+        logger.info("temporary_image_directory: %s" % temporary_image_directory )
+    else:
+        temporary_image_directory = None
+
 
     # store names of newly created meshes, so we dont overlap
     mesh_name_set = set()
@@ -512,27 +532,6 @@ def export(file,
 
             is_coords_written = False
 
-            mesh_materials = mesh.materials[:]
-            if not mesh_materials:
-                mesh_materials = [None]
-
-            mesh_material_tex = [None] * len(mesh_materials)
-            mesh_material_mtex = [None] * len(mesh_materials)
-            mesh_material_images = [None] * len(mesh_materials)
-
-            for i, material in enumerate(mesh_materials):
-                if 0 and material:
-                    for mtex in material.texture_slots:
-                        if mtex:
-                            tex = mtex.texture
-                            if tex and tex.type == 'IMAGE':
-                                image = tex.image
-                                if image:
-                                    mesh_material_tex[i] = tex
-                                    mesh_material_mtex[i] = mtex
-                                    mesh_material_images[i] = image
-                                    break
-
             # fast access!
             mesh_vertices = mesh.vertices[:]
             mesh_loops = mesh.loops[:]
@@ -540,21 +539,14 @@ def export(file,
             mesh_polygons_materials = [p.material_index for p in mesh_polygons]
             mesh_polygons_vertices = [p.vertices[:] for p in mesh_polygons]
 
-            if len(set(mesh_material_images)) > 0:  # make sure there is at least one image
-                mesh_polygons_image = [mesh_material_images[material_index] for material_index in mesh_polygons_materials]
-            else:
-                mesh_polygons_image = [None] * len(mesh_polygons)
-            mesh_polygons_image_unique = set(mesh_polygons_image)
-
             # group faces
             polygons_groups = {}
-            for material_index in range(len(mesh_materials)):
-                for image in mesh_polygons_image_unique:
-                    polygons_groups[material_index, image] = []
-            del mesh_polygons_image_unique
+            for material_index in range(len(mesh.materials)):
+                polygons_groups[material_index] = []
 
-            for i, (material_index, image) in enumerate(zip(mesh_polygons_materials, mesh_polygons_image)):
-                polygons_groups[material_index, image].append(i)
+
+            for i, material_index in enumerate(mesh_polygons_materials):
+                polygons_groups[material_index].append(i)
 
             # Py dict are sorted now, so we can use directly polygons_groups.items()
             # and still get consistent reproducible outputs.
@@ -587,9 +579,9 @@ def export(file,
                 for ltri in mesh.loop_triangles:
                     polygons_to_loop_triangles_indices[ltri.polygon_index].append(ltri)
 
-            for (material_index, image), polygons_group in polygons_groups.items():
+            for material_index, polygons_group in polygons_groups.items():
                 if polygons_group:
-                    material = mesh_materials[material_index]
+                    material = mesh.materials[material_index]
 
                     fw('%s<Shape>\n' % ident)
                     ident += '\t'
@@ -627,33 +619,9 @@ def export(file,
                     fw('%s<Appearance>\n' % ident)
                     ident += '\t'
 
-                    if image and not use_h3d:
-                        writeImageTexture(ident, image)
-
-                        # transform by mtex
-                        loc = mesh_material_mtex[material_index].offset[:2]
-
-                        # mtex_scale * tex_repeat
-                        sca_x, sca_y = mesh_material_mtex[material_index].scale[:2]
-
-                        sca_x *= mesh_material_tex[material_index].repeat_x
-                        sca_y *= mesh_material_tex[material_index].repeat_y
-
-                        # flip x/y is a sampling feature, convert to transform
-                        if mesh_material_tex[material_index].use_flip_axis:
-                            rot = math.pi / -2.0
-                            sca_x, sca_y = sca_y, -sca_x
-                        else:
-                            rot = 0.0
-
-                        ident_step = ident + (' ' * (-len(ident) +
-                                                     fw('%s<TextureTransform ' % ident)))
-                        fw('\n')
-                        # fw('center="%.6f %.6f" ' % (0.0, 0.0))
-                        fw(ident_step + 'translation="%.6f %.6f"\n' % loc)
-                        fw(ident_step + 'scale="%.6f %.6f"\n' % (sca_x, sca_y))
-                        fw(ident_step + 'rotation="%.6f"\n' % rot)
-                        fw(ident_step + '/>\n')
+                    imageTextureNode = imageTexture_in_material(material)
+                    if imageTextureNode:
+                        writeImageTexture(ident, imageTextureNode)
 
                     if use_h3d:
                         mat_tmp = material if material else gpu_shader_dummy_mat
@@ -1237,8 +1205,12 @@ def export(file,
 
             fw('%s</ComposedShader>\n' % ident)
 
-    def writeImageTexture(ident, image):
+    def writeImageTexture(ident, imageTextureNode):
+        image=imageTextureNode.image
         image_id = quoteattr(unique_name(image, IM_ + image.name, uuid_cache_image, clean_func=clean_def, sep="_"))
+        logger.info("write ImageTexture X3D node for %r format %r filepath %r" % (image.name, image.file_format, image.filepath ))
+
+
 
         if image.tag:
             fw('%s<ImageTexture USE=%s />\n' % (ident, image_id))
@@ -1249,24 +1221,79 @@ def export(file,
                                          fw('%s<ImageTexture ' % ident)))
             fw('DEF=%s\n' % image_id)
 
-            # collect image paths, can load multiple
-            # [relative, name-only, absolute]
-            filepath = image.filepath
-            filepath_full = bpy.path.abspath(filepath, library=image.library)
-            filepath_ref = bpy_extras.io_utils.path_reference(filepath_full, base_src, base_dst, path_mode, "textures", copy_set, image.library)
-            filepath_base = os.path.basename(filepath_full)
+            if (path_mode != 'COPY') and not image.filepath :
+                # this is the case where the path_mode choice is intended to
+                # reference an existing image file, but no filepath for that
+                # file is specified in the image data structure
+                logger.warning("no filepath available for Path Mode %s" % path_mode )
 
-            images = [
-                filepath_ref,
-                filepath_base,
-            ]
-            if path_mode != 'RELATIVE':
-                images.append(filepath_full)
+            # setting COPY_SUBDIR to None in calls to
+            # bpy_extras.io_utils.path_reference will cause copied images
+            # to be placed in same directory as the exported X3D file.
+            COPY_SUBDIR=None
+            has_packed_file =   image.packed_file and image.packed_file.size > 0
+            if path_mode == 'COPY' and ( has_packed_file or not image.filepath) :
+                # write to temporary folder so that
+                # bpy_extras.io_utils.path_reference_copy can
+                # copy it final  location at end of export
+                use_file_format = image.file_format or 'PNG'
 
-            images = [f.replace('\\', '/') for f in images]
-            images = [f for i, f in enumerate(images) if f not in images[:i]]
+                try:
+                    image_ext = {'JPEG':'.jpg' , 'PNG':'.png'}[use_file_format]
+                except KeyError:
+                    # if image data not in JPEG or PNG it is not supported in
+                    # X3D standard. If image file_format is "FFMPEG" that is a movie
+                    # format, and would be referenced in an X3D MovieTexture node
+                    if use_file_format == "FFMPEG" :
+                        logger.warning("movie textures not supported for X3D export")
+                    else:
+                        logger.warning("image texture file format %r not supported" % use_file_format)
+                else:
+                    image_base = os.path.splitext( os.path.basename(image.name))[0]
+                    image_filename = image_base + image_ext
 
-            fw(ident_step + "url='%s'\n" % ' '.join(['"%s"' % escape(f) for f in images]))
+                    filepath_full = os.path.join(temporary_image_directory, image_filename)
+
+                    logger.info("writing image for texture to %s" % filepath_full)
+                    image.save( filepath = filepath_full )
+
+                    filepath_ref = bpy_extras.io_utils.path_reference(
+                                    filepath_full,
+                                    temporary_image_directory,
+                                    base_dst,
+                                    path_mode,
+                                    COPY_SUBDIR,
+                                    copy_set,
+                                    image.library)
+            else:
+                filepath = image.filepath
+                filepath_full = bpy.path.abspath(filepath, library=image.library)
+                filepath_ref = bpy_extras.io_utils.path_reference(
+                                filepath_full,
+                                base_src,
+                                base_dst,
+                                path_mode,
+                                COPY_SUBDIR,
+                                copy_set,
+                                image.library)
+
+            # following replaces Windows filepath separator with POSIX /Unix
+            # separator
+            filepath_ref = filepath_ref.replace("\\", "/")
+
+            image_urls =  [ filepath_ref ]
+
+            logger.info("node urls: %s" % (image_urls,))
+            fw(ident_step + "url='%s'\n" % ' '.join(['"%s"' % escape(f) for f in image_urls]))
+
+            # default value of repeatS, repeatT fields is true, so only need to
+            # specify if extension value is CLIP
+            x3d_supported_extension = ["CLIP", "REPEAT"]
+            if imageTextureNode.extension not in x3d_supported_extension:
+                logger.warning("imageTextureNode.extension value %s unsupported in X3D" % imageTextureNode.extension)
+
+            if imageTextureNode.extension == "CLIP":
+                fw(ident_step + "repeatS='false' repeatT='false'")
             fw(ident_step + '/>\n')
 
     def writeBackground(ident, world):
@@ -1513,9 +1540,12 @@ def export(file,
     if use_h3d:
         bpy.data.materials.remove(gpu_shader_dummy_mat)
 
-    # copy all collected files.
-    # print(copy_set)
-    bpy_extras.io_utils.path_reference_copy(copy_set)
+    if copy_set:
+        for c in copy_set:
+            logger.info("copy_set item %r" % copy_set)
+        bpy_extras.io_utils.path_reference_copy(copy_set)
+    else:
+        logger.info("no items in copy_set")
 
     print('Info: finished X3D export to %r' % file.name)
 
@@ -1559,6 +1589,7 @@ def save(context,
          name_decorations=True
          ):
 
+    logger.info("save: context %r to filepath %r" % (context,filepath))
     bpy.path.ensure_ext(filepath, '.x3dz' if use_compress else '.x3d')
 
     if bpy.ops.object.mode_set.poll():
