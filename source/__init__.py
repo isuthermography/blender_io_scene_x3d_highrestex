@@ -6,7 +6,7 @@ bl_info = {
     "name":"Web3D X3D/VRML2 format",
     "description": "Import-Export X3D, Import VRML2",
     "author": "maintainer: Bujus_Krachus",
-    "version": (2, 4, 2),
+    "version": (2, 4, 3),
     "blender": (4, 2, 0),
     "location": "",
     "warning": "",
