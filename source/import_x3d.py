@@ -2898,7 +2898,7 @@ def appearance_LoadImageTexture(imageTexture, ancestry, node):
             # '"foo" "bar"' --> ['foo', 'bar']
             ima_urls = [w.strip('"') for w in ima_urls.split('" "')]
         else:
-            ima_urls = [ima_urls]
+            ima_urls = [ima_urls.strip('"')]
     # ima_urls is a list or None
 
     if ima_urls is None:
