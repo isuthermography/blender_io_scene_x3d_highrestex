@@ -38,8 +38,7 @@ from bpy_extras.io_utils import (
     ImportHelper,
     ExportHelper,
     orientation_helper,
-    axis_conversion,
-    path_reference_mode,
+    axis_conversion
 )
 from bpy.types import (
     Operator,
@@ -347,7 +346,18 @@ class ExportX3D(bpy.types.Operator, ExportHelper):
         description=translate(lang, "scale_description"),
     )
 
-    path_mode: path_reference_mode
+
+    path_mode: EnumProperty(
+        name=translate(lang, "path_mode_name"),
+        description= translate(lang, "path_mode_description"),
+        #   A subset of the items in bpy_extras.io_utils.path_reference_mode
+        items=(
+            ('RELATIVE', translate(lang,"relative_mode"), translate(lang, "relative_mode_description")),
+            ('STRIP', translate(lang,"strip_mode"), translate(lang, "strip_mode_description")),
+            ('COPY', translate(lang, "copy_mode"), translate(lang, "copy_mode_description")),
+        ),
+        default='COPY',
+    )
 
     def execute(self, context):
         from . import export_x3d

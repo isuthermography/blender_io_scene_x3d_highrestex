@@ -81,7 +81,16 @@ def get_translation():
             "solidify": "Solidify",
             "solidify_description": "Solidify objects by adding a solify modifier to each of the objects",
             "solidify_value": "Solidify Value",
-            "solidify_value_description": "Value used as width for the solidify modifier"
+            "solidify_value_description": "Value used as width for the solidify modifier",
+            "path_mode_name" : "Path Mode",
+            "path_mode_description" : "Method used to reference paths",
+            "relative_mode" : "Relative",
+            "relative_mode_description" : "Always write relative paths (where possible)",
+            "strip_mode" : "Strip Path",
+            "strip_mode_description" : "Filename only",
+            "copy_mode"       : "Copy",
+            "copy_mode_description"  : "Copy the file to the destination path (or subdirectory)",
+
         },
         "de_DE": {
             "import": "Importiere X3D/VRML2",

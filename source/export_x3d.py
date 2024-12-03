@@ -208,11 +208,15 @@ def export(file,
            use_normals=False,
            use_hierarchy=True,
            use_h3d=False,
-           path_mode='AUTO',
+           path_mode='COPY',
            name_decorations=True,
            ):
 
-    logger.info("export with path_mode: %r" % path_mode)
+    if path_mode not in ("COPY", "RELATIVE", "STRIP"):
+        logger.error("Path Mode %s is invalid, raising ValueError" % path_mode)
+        raise ValueError("Invalid Path Mode. Valid values are RELATIVE, STRIP, COPY")
+    else:
+        logger.debug("export with path_mode: %r" % path_mode)
     # -------------------------------------------------------------------------
     # Global Setup
     # -------------------------------------------------------------------------
@@ -1277,8 +1281,8 @@ def export(file,
                                 copy_set,
                                 image.library)
 
-            # following replaces Windows filepath separator with POSIX /Unix
-            # separator
+            # following replaces Windows filepath separator with slash separator
+            # for relative urls
             filepath_ref = filepath_ref.replace("\\", "/")
 
             image_urls =  [ filepath_ref ]
@@ -1585,7 +1589,7 @@ def save(context,
          use_hierarchy=True,
          use_h3d=False,
          global_matrix=None,
-         path_mode='AUTO',
+         path_mode='COPY',
          name_decorations=True
          ):
 
