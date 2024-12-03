@@ -2868,10 +2868,50 @@ def appearance_CreateDefaultMaterial():
     return bpymat_wrap
 
 
+def download_image(url, output_path=None):
+    """
+    Downloads an image from the web and saves it to disk.
+    """
+
+    import requests
+    from tempfile import gettempdir
+    from mimetypes import guess_extension
+
+    if not output_path:
+        output_path = gettempdir()
+    elif not os.path.isdir(output_path):
+        raise ValueError("Provided output_path must be a directory.")
+
+    try:
+        # Request the content from the URL
+        response = requests.get(url, stream=True)
+        response.raise_for_status()  # Raise exception for HTTP errors
+
+        # Get the file extension from the content type and Generate a filename
+        content_type = response.headers.get('Content-Type', '')
+        ext = guess_extension(content_type.split(';')[0].strip()) or '.jpg'
+        filename = os.path.basename(url.split('?')[0]) or "downloaded_image"
+        if '.' not in filename:  # Ensure filename has an extension
+            filename += ext
+
+        full_path = os.path.join(output_path, filename)
+        with open(full_path, 'wb') as f:
+            for chunk in response.iter_content(1024):
+                f.write(chunk)
+
+        return full_path
+
+    except Exception as e:
+        print(f"Failed to download image: {e}")
+        return None
+
+
 def appearance_LoadImageTextureFile(ima_urls, node):
     bpyima = None
 
     for f in ima_urls:
+        if f.startswith(('https://', 'http://', 'www.')): # url could be a web url > download image first
+            f = download_image(f, os.path.dirname(current_file_path)) or f
         dirname = os.path.dirname(node.getFilename())
         bpyima = image_utils.load_image(f, dirname,
                                         place_holder=False,
