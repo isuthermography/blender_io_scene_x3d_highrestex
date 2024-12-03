@@ -2958,9 +2958,6 @@ def appearance_LoadImageTexture(imageTexture, ancestry, node):
         if not bpyima:
             print("ImportX3D warning: unable to load texture", ima_urls)
         else:
-            # KNOWN BUG; PNGs with a transparent color are not perceived
-            # as transparent. Need alpha channel.
-
             if bpyima.depth not in {32, 128}:
                 bpyima.alpha_mode = 'NONE'
         return bpyima
