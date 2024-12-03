@@ -898,6 +898,27 @@ class vrmlNode(object):
 
         return new_array
 
+    def getFieldAsMFStringArray(self, field, default, ancestry):
+        """
+        Get a list of strings based on a field assumed to be a MFString
+        """
+        array = self.getFieldAsString(field, None, ancestry)
+
+        if array is None: # try get array list
+            try:
+                array = self.getFieldAsStringArray(field, ancestry)
+                # in some cases we get a list of arrays
+            except:
+                array = default
+        else: # parse string to array
+            if '" "' in array: # mfstring with multiple elements
+                # '"foo" "bar"' --> ['foo', 'bar']
+                array = [w.strip('"') for w in array.split('" "')]
+            else: # regular string or mfstring with single element
+                array = [array.strip('"')]
+
+        return array
+
     def getLevel(self):
         # Ignore self_real
         level = 0
@@ -2925,22 +2946,9 @@ def appearance_LoadImageTextureFile(ima_urls, node):
 
 def appearance_LoadImageTexture(imageTexture, ancestry, node):
     # TODO: cache loaded textures...
-    ima_urls = imageTexture.getFieldAsString('url', None, ancestry)
+    ima_urls = imageTexture.getFieldAsMFStringArray('url', None, ancestry)
 
-    if ima_urls is None:
-        try:
-            ima_urls = imageTexture.getFieldAsStringArray('url', ancestry)
-            # in some cases we get a list of images.
-        except:
-            ima_urls = None
-    else:
-        if '" "' in ima_urls:
-            # '"foo" "bar"' --> ['foo', 'bar']
-            ima_urls = [w.strip('"') for w in ima_urls.split('" "')]
-        else:
-            ima_urls = [ima_urls.strip('"')]
     # ima_urls is a list or None
-
     if ima_urls is None:
         print("\twarning, image with no URL, this is odd")
         return None
