@@ -321,10 +321,16 @@ class ExportX3D(bpy.types.Operator, ExportHelper):
         description=translate(lang, "name_decorations_description"),
         default=True,
     )
+
+    def _h3d_update(self, context):
+        """Disable h3d permanently even if set programmatically"""
+        if blender_version_higher_279:
+            self.use_h3d = False
     use_h3d: BoolProperty(
         name=translate(lang, "h3d_extensions"),
         description=translate(lang, "h3d_extensions_description"),
         default=False,
+        update=_h3d_update,
     )
 
     def _file_unit_update(self, context):
