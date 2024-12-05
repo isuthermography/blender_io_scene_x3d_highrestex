@@ -4125,7 +4125,7 @@ def load(context,
          solidify_value=0.1
          ):
 
-    paths = [os.path.join(directory, name.name) for name in files] or [filepath]
+    paths = [os.path.join(directory, name.name) for name in files] if files else [filepath]
 
     for file in paths:
         # loadWithProfiler(operator, context, filepath, global_matrix)
