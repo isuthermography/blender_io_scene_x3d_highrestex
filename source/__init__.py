@@ -75,6 +75,12 @@ class ImportX3D(bpy.types.Operator, ImportHelper):
         subtype='DIR_PATH',
     )
 
+    def _file_unit_update(self, context):
+        if self.file_unit == 'CUSTOM':
+            return
+        UNITS_FACTOR = {'M': 1.0, 'DM': 0.1, 'CM': 0.01, 'MM': 0.001, 'IN': 0.0254}
+        self.global_scale = UNITS_FACTOR[self.file_unit]
+
     file_unit: EnumProperty(
         name=translate(lang, "file_unit"),
         items=(('M', translate(lang, "meter"), translate(lang, "meter_description")),
@@ -86,6 +92,7 @@ class ImportX3D(bpy.types.Operator, ImportHelper):
                ),
         description=translate(lang, "file_unit_description"),
         default='M',
+        update=_file_unit_update,
     )
 
     global_scale: FloatProperty(
@@ -226,10 +233,6 @@ class X3D_PT_export_transform(bpy.types.Panel):
         sub.enabled = operator.file_unit == 'CUSTOM'
 
         sub.prop(operator, "global_scale")
-        UNITS_FACTOR = {'M': 1.0, 'DM': 10.0, 'CM': 100.0, 'MM': 1000.0, 'IN': 39.37007874}
-        if operator.file_unit != 'CUSTOM':
-            operator.global_scale = UNITS_FACTOR[operator.file_unit]
-
         layout.prop(operator, "axis_forward")
         layout.prop(operator, "axis_up")
 
@@ -324,6 +327,12 @@ class ExportX3D(bpy.types.Operator, ExportHelper):
         default=False,
     )
 
+    def _file_unit_update(self, context):
+        if self.file_unit == 'CUSTOM':
+            return
+        UNITS_FACTOR = {'M': 1.0, 'DM': 10.0, 'CM': 100.0, 'MM': 1000.0, 'IN': 1.0 / 0.0254}
+        self.global_scale = UNITS_FACTOR[self.file_unit]
+
     file_unit: EnumProperty(
         name=translate(lang, "file_unit"),
         items=(('M', translate(lang, "meter"), translate(lang, "meter_description")),
@@ -335,6 +344,7 @@ class ExportX3D(bpy.types.Operator, ExportHelper):
                ),
         description=translate(lang, "file_unit_description"),
         default='M',
+        update=_file_unit_update,
     )
 
     global_scale: FloatProperty(
@@ -373,8 +383,7 @@ class ExportX3D(bpy.types.Operator, ExportHelper):
                                             ))
         global_matrix = axis_conversion(to_forward=self.axis_forward,
                                         to_up=self.axis_up,
-                                        ).to_4x4() @ Matrix.Scale(
-            1.0 / 0.0254 if self.file_unit == 'IN' else self.global_scale, 4)
+                                        ).to_4x4() @ Matrix.Scale(self.global_scale, 4)
         keywords["global_matrix"] = global_matrix
 
         return export_x3d.save(context, **keywords)
@@ -410,9 +419,6 @@ class X3D_PT_import_transform(bpy.types.Panel):
         sub.enabled = operator.file_unit == 'CUSTOM'
 
         sub.prop(operator, "global_scale")
-        UNITS_FACTOR = {'M': 1.0, 'DM': 0.1, 'CM': 0.01, 'MM': 0.001, 'IN': 0.0254}
-        if operator.file_unit != 'CUSTOM':
-            operator.global_scale = UNITS_FACTOR[operator.file_unit]
         layout.prop(operator, "axis_forward")
         layout.prop(operator, "axis_up")
 
