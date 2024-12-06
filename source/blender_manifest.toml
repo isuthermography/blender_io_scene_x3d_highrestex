@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 id = "web3d_x3d_vrml2_format"
 name = "Web3D X3D/VRML2 format"
-version = "2.4.3"
+version = "2.4.4"
 tagline = "Import-Export X3D, Import VRML2"
 maintainer = "Bujus_Krachus"
 type = "add-on"
