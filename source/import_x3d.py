@@ -16,6 +16,7 @@ from itertools import chain
 texture_cache = {}
 material_cache = {}
 font_variants_cache = {}
+download_cache = {}
 current_file_path = None
 conversion_scale = 1.0
 
@@ -2893,6 +2894,12 @@ def download_image(url, output_path=None):
     """
     Downloads an image from the web and saves it to disk.
     """
+    if url in download_cache: # check cache first for same file to save bandwidth
+        return download_cache[url]
+
+    if not bpy.app.online_access: # image download requires network permission which is not always granted
+        print("Can't download web image: online access denied by user")
+        return None
 
     import requests
     from tempfile import gettempdir
@@ -2920,6 +2927,7 @@ def download_image(url, output_path=None):
             for chunk in response.iter_content(1024):
                 f.write(chunk)
 
+        download_cache[url] = full_path
         return full_path
 
     except Exception as e:

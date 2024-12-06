@@ -21,3 +21,4 @@ copyright = [
 
 [permissions]
 files = "Required to access files for import/export"
+network = "Required to download web resources for import"
