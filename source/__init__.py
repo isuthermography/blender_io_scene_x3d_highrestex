@@ -125,6 +125,14 @@ class ImportX3D(bpy.types.Operator, ImportHelper):
         description=translate(lang, "solidify_value_description"),
     )
 
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        import_ui_general(layout, self)
+        import_ui_transform(layout, self)
+        import_ui_mesh(layout, self)
+
     def execute(self, context):
         from . import import_x3d
 
@@ -140,130 +148,42 @@ class ImportX3D(bpy.types.Operator, ImportHelper):
 
         return import_x3d.load(context, **keywords)
 
-    def draw(self, context):
-        pass
+    def invoke(self, context, event):
+        return self.invoke_popup(context)
 
+def import_ui_general(layout, operator):
+    header, body = layout.panel("IMPORT_SCENE_OT_x3d_general", default_closed=False)
+    header.label(text=translate(lang, "label_general"))
+    if body:
+        line = body.row(align=True)
+        line.prop(operator, "as_collection")
 
-class X3D_PT_export_include(bpy.types.Panel):
-    bl_space_type = 'FILE_BROWSER'
-    bl_region_type = 'TOOL_PROPS'
-    bl_label = "Include"
-    bl_parent_id = "FILE_PT_operator"
+def import_ui_transform(layout, operator):
+    header, body = layout.panel("IMPORT_SCENE_OT_x3d_transform", default_closed=False)
+    header.label(text=translate(lang, "label_transform"))
+    if body:
+        line = body.row(align=True)
+        line.prop(operator, "file_unit")
 
-    @classmethod
-    def poll(cls, context):
-        sfile = context.space_data
-        operator = sfile.active_operator
-
-        return operator.bl_idname == "EXPORT_SCENE_OT_x3d"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False  # No animation.
-
-        sfile = context.space_data
-        operator = sfile.active_operator
-
-        sublayout = layout.column(heading="Limit to")
-        sublayout.enabled = True
-        sublayout.prop(operator, "use_selection")
-        sublayout.prop(operator, "use_visible")
-        sublayout.prop(operator, "use_active_collection")
-
-        sublayout = layout.column(heading="Include data")
-        sublayout.enabled = True
-        sublayout.prop(operator, "use_hierarchy")
-        sublayout.prop(operator, "name_decorations")
-        # keeping h3d disabled for now as the underlying gpu.export_shader() got removed since 2.80
-        # see https://projects.blender.org/blender/blender-addons/issues/79991 for details
-        # when readding it, don't forget to change the description
-        # layout.prop(operator, "use_h3d")
-        col = layout.column()
-        col.enabled = not blender_version_higher_279
-        col.prop(operator, "use_h3d")
-
-class X3D_PT_export_external_resource(bpy.types.Panel):
-    bl_space_type = 'FILE_BROWSER'
-    bl_region_type = 'TOOL_PROPS'
-    bl_label = "Image Textures"
-    bl_parent_id = "FILE_PT_operator"
-
-    @classmethod
-    def poll(cls, context):
-        sfile = context.space_data
-        operator = sfile.active_operator
-
-        return operator.bl_idname == "EXPORT_SCENE_OT_x3d"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False  # No animation.
-
-        sfile = context.space_data
-        operator = sfile.active_operator
-
-        layout.prop(operator, "path_mode")
-
-class X3D_PT_export_transform(bpy.types.Panel):
-    bl_space_type = 'FILE_BROWSER'
-    bl_region_type = 'TOOL_PROPS'
-    bl_label = "Transform"
-    bl_parent_id = "FILE_PT_operator"
-
-    @classmethod
-    def poll(cls, context):
-        sfile = context.space_data
-        operator = sfile.active_operator
-
-        return operator.bl_idname == "EXPORT_SCENE_OT_x3d"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False  # No animation.
-
-        sfile = context.space_data
-        operator = sfile.active_operator
-
-        layout.prop(operator, "file_unit")
-
-        sub = layout.row()
+        sub = body.row(align=True)
         sub.enabled = operator.file_unit == 'CUSTOM'
-
         sub.prop(operator, "global_scale")
-        layout.prop(operator, "axis_forward")
-        layout.prop(operator, "axis_up")
 
+        line = body.row(align=True)
+        line.prop(operator, "axis_forward")
+        line = body.row(align=True)
+        line.prop(operator, "axis_up")
 
+def import_ui_mesh(layout, operator):
+    header, body = layout.panel("IMPORT_SCENE_OT_x3d_mesh", default_closed=False)
+    header.label(text=translate(lang, "label_mesh"))
+    if body:
+        line = body.row(align=True)
+        line.prop(operator, "solidify")
 
-
-class X3D_PT_export_geometry(bpy.types.Panel):
-    bl_space_type = 'FILE_BROWSER'
-    bl_region_type = 'TOOL_PROPS'
-    bl_label = "Geometry"
-    bl_parent_id = "FILE_PT_operator"
-
-    @classmethod
-    def poll(cls, context):
-        sfile = context.space_data
-        operator = sfile.active_operator
-
-        return operator.bl_idname == "EXPORT_SCENE_OT_x3d"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False  # No animation.
-
-        sfile = context.space_data
-        operator = sfile.active_operator
-
-        layout.prop(operator, "use_mesh_modifiers")
-        layout.prop(operator, "use_triangulate")
-        layout.prop(operator, "use_normals")
-        layout.prop(operator, "use_compress")
+        sub = body.row(align=True)
+        sub.enabled = operator.solidify == True
+        sub.prop(operator, "solidify_value")
 
 
 @orientation_helper(axis_forward='-Z', axis_up='Y')
@@ -395,97 +315,78 @@ class ExportX3D(bpy.types.Operator, ExportHelper):
         return export_x3d.save(context, **keywords)
 
     def draw(self, context):
-        pass
-
-
-class X3D_PT_import_transform(bpy.types.Panel):
-    bl_space_type = 'FILE_BROWSER'
-    bl_region_type = 'TOOL_PROPS'
-    bl_label = "Transform"
-    bl_parent_id = "FILE_PT_operator"
-
-    @classmethod
-    def poll(cls, context):
-        sfile = context.space_data
-        operator = sfile.active_operator
-
-        return operator.bl_idname == "IMPORT_SCENE_OT_x3d"
-
-    def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
-        layout.use_property_decorate = False  # No animation.
+        layout.use_property_decorate = False
 
-        sfile = context.space_data
-        operator = sfile.active_operator
+        export_ui_include(layout, self)
+        export_ui_transform(layout, self)
+        export_ui_mesh(layout, self)
+        export_ui_external_resource(layout, self)
 
-        layout.prop(operator, "file_unit")
+def export_ui_include(layout, operator):
+    header, body = layout.panel("EXPORT_SCENE_OT_x3d_include", default_closed=False)
+    header.label(text=translate(lang, "label_include"))
+    if body:
+        sublayout = body.column(heading="Limit to")
+        sublayout.enabled = True
+        sublayout.prop(operator, "use_selection")
+        sublayout.prop(operator, "use_visible")
+        sublayout.prop(operator, "use_active_collection")
 
-        sub = layout.row()
+        sublayout = body.column(heading="Include data")
+        sublayout.enabled = True
+        sublayout.prop(operator, "use_hierarchy")
+        sublayout.prop(operator, "name_decorations")
+        # keeping h3d disabled for now as the underlying gpu.export_shader() got removed since 2.80
+        # see https://projects.blender.org/blender/blender-addons/issues/79991 for details
+        # when readding it, don't forget to change the description
+        # layout.prop(operator, "use_h3d")
+        col = body.column()
+        col.enabled = not blender_version_higher_279
+        col.prop(operator, "use_h3d")
+
+def export_ui_transform(layout, operator):
+    header, body = layout.panel("EXPORT_SCENE_OT_x3d_transform", default_closed=False)
+    header.label(text=translate(lang, "label_transform"))
+    if body:
+        line = body.row(align=True)
+        line.prop(operator, "file_unit")
+
+        sub = body.row(align=True)
         sub.enabled = operator.file_unit == 'CUSTOM'
-
         sub.prop(operator, "global_scale")
-        layout.prop(operator, "axis_forward")
-        layout.prop(operator, "axis_up")
 
+        line = body.row(align=True)
+        line.prop(operator, "axis_forward")
+        line = body.row(align=True)
+        line.prop(operator, "axis_up")
 
-class X3D_PT_import_general(bpy.types.Panel):
-    bl_space_type = 'FILE_BROWSER'
-    bl_region_type = 'TOOL_PROPS'
-    bl_label = "General"
-    bl_parent_id = "FILE_PT_operator"
+def export_ui_mesh(layout, operator):
+    header, body = layout.panel("EXPORT_SCENE_OT_x3d_geometry", default_closed=False)
+    header.label(text=translate(lang, "label_geometry"))
+    if body:
+        line = body.row(align=True)
+        line.prop(operator, "use_mesh_modifiers")
+        line = body.row(align=True)
+        line.prop(operator, "use_triangulate")
+        line = body.row(align=True)
+        line.prop(operator, "use_normals")
+        line = body.row(align=True)
+        line.prop(operator, "use_compress")
 
-    @classmethod
-    def poll(cls, context):
-        sfile = context.space_data
-        operator = sfile.active_operator
-
-        return operator.bl_idname == "IMPORT_SCENE_OT_x3d"
-
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False  # No animation.
-
-        sfile = context.space_data
-        operator = sfile.active_operator
-
-        layout.prop(operator, "as_collection")
-
-
-class X3D_PT_import_mesh(bpy.types.Panel):
-    bl_space_type = 'FILE_BROWSER'
-    bl_region_type = 'TOOL_PROPS'
-    bl_label = "Mesh"
-    bl_parent_id = "FILE_PT_operator"
-
-    @classmethod
-    def poll(cls, context):
-        sfile = context.space_data
-        operator = sfile.active_operator
-
-        return operator.bl_idname == "IMPORT_SCENE_OT_x3d"
-
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False  # No animation.
-
-        sfile = context.space_data
-        operator = sfile.active_operator
-
-        layout.prop(operator, "solidify")
-        sub = layout.row()
-        sub.enabled = operator.solidify == True
-        sub.prop(operator, "solidify_value")
+def export_ui_external_resource(layout, operator):
+    header, body = layout.panel("EXPORT_SCENE_OT_x3d_external_resource", default_closed=False)
+    header.label(text=translate(lang, "label_media"))
+    if body:
+        line = body.row(align=True)
+        line.prop(operator, "path_mode")
 
 
 class IO_FH_X3D(bpy.types.FileHandler):
     """File Handler for drag drop import of x3d files"""
     bl_idname = "IO_FH_x3d"
-    bl_label = "x3d"
+    bl_label = "X3D"
     bl_import_operator = "import_scene.x3d"
     bl_export_operator = "export_scene.x3d"
     bl_file_extensions = ".x3d;.wrl"
@@ -499,7 +400,6 @@ def menu_func_import(self, context):
     self.layout.operator(ImportX3D.bl_idname,
                          text="X3D Extensible 3D (.x3d/.wrl)")
 
-
 def menu_func_export(self, context):
     self.layout.operator(ExportX3D.bl_idname,
                          text="X3D Extensible 3D (.x3d)")
@@ -507,14 +407,7 @@ def menu_func_export(self, context):
 
 classes = (
     ExportX3D,
-    X3D_PT_export_include,
-    X3D_PT_export_transform,
-    X3D_PT_export_geometry,
-    X3D_PT_export_external_resource,
     ImportX3D,
-    X3D_PT_import_general,
-    X3D_PT_import_transform,
-    X3D_PT_import_mesh,
     IO_FH_X3D,
     X3D_Preferences
 )
