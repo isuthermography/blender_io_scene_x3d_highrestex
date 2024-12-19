@@ -196,6 +196,38 @@ class ExportX3D(bpy.types.Operator, ExportHelper):
     filename_ext = ".x3d"
     filter_glob: StringProperty(default="*.x3d", options={'HIDDEN'})
 
+    def _batch_mode_update(self, context):
+        if self.batch_mode == 'SCENE' or self.batch_mode == 'COLLECTION':
+            self.use_visible = False
+            self.use_selection = False
+            self.use_active_collection = False
+            return
+    batch_mode: EnumProperty(
+        name="Batch Mode",
+        items=(('OFF',
+                translate(lang, "batch_off"),
+                translate(lang, "batch_off_description")),
+               ('COLLECTION',
+                translate(lang, "batch_collection"),
+                translate(lang, "batch_collection_description")),
+               ('OBJECT',
+                translate(lang, "batch_object"),
+                translate(lang, "batch_object_description")),
+               ('OBJECT_HIERARCHY',
+                translate(lang, "batch_object_hierarchy"),
+                translate(lang, "batch_object_hierarchy_description")),
+               ('SCENE',
+                translate(lang, "batch_scene"),
+                translate(lang, "batch_scene_description")),
+               ),
+        update=_batch_mode_update,
+    )
+    use_batch_own_dir: BoolProperty(
+        name=translate(lang, "batch_dir"),
+        description=translate(lang, "batch_dir_description"),
+        default=False,
+    )
+
     use_selection: BoolProperty(
         name=translate(lang, "selection_only"),
         description=translate(lang, "selection_only_description"),
@@ -295,6 +327,10 @@ class ExportX3D(bpy.types.Operator, ExportHelper):
         default='COPY',
     )
 
+    @property
+    def check_extension(self):
+        return self.batch_mode == 'OFF'
+
     def execute(self, context):
         from . import export_x3d
 
@@ -328,8 +364,14 @@ def export_ui_include(layout, operator):
     header, body = layout.panel("EXPORT_SCENE_OT_x3d_include", default_closed=False)
     header.label(text=translate(lang, "label_include"))
     if body:
+        row = body.row(align=True)
+        row.prop(operator, "batch_mode")
+        sub = row.row(align=True)
+        sub.prop(operator, "use_batch_own_dir", text="", icon='NEWFOLDER')
+
         sublayout = body.column(heading="Limit to")
-        sublayout.enabled = True
+        sublayout.enabled = (operator.batch_mode == 'OFF' or operator.batch_mode == 'OBJECT'
+                             or operator.batch_mode == 'OBJECT_HIERARCHY')
         sublayout.prop(operator, "use_selection")
         sublayout.prop(operator, "use_visible")
         sublayout.prop(operator, "use_active_collection")

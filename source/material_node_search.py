@@ -56,6 +56,9 @@ def imageTexture_in_material(material):
     returns instance of ShaderNodeTexImage
     https://docs.blender.org/api/current/bpy.types.ShaderNodeTexImage.html
     """
+    if not material: # when no material is set
+        return None
+
     _logger.debug("evaluating image in material %s" % material.name)
 
     material_output = _find_node_by_idname( material.node_tree.nodes, _ShaderNodeTypes.MATERIAL_OUTPUT)

@@ -545,12 +545,17 @@ def export(file,
 
             # group faces
             polygons_groups = {}
-            for material_index in range(len(mesh.materials)):
-                polygons_groups[material_index] = []
 
+            if mesh.materials:
+                # Group faces by material
+                for material_index in range(len(mesh.materials)):
+                    polygons_groups[material_index] = []
 
-            for i, material_index in enumerate(mesh_polygons_materials):
-                polygons_groups[material_index].append(i)
+                if polygons_groups:
+                    for i, material_index in enumerate(mesh_polygons_materials):
+                        polygons_groups[material_index].append(i)
+            else: # object has no material, unusual but may happen.
+                polygons_groups[0] = list(range(len(mesh_polygons)))
 
             # Py dict are sorted now, so we can use directly polygons_groups.items()
             # and still get consistent reproducible outputs.
@@ -585,7 +590,9 @@ def export(file,
 
             for material_index, polygons_group in polygons_groups.items():
                 if polygons_group:
-                    material = mesh.materials[material_index]
+                    material = None
+                    if mesh.materials:
+                        material = mesh.materials[material_index]
 
                     fw('%s<Shape>\n' % ident)
                     ident += '\t'
@@ -1590,38 +1597,136 @@ def save(context,
          use_h3d=False,
          global_matrix=None,
          path_mode='COPY',
-         name_decorations=True
+         name_decorations=True,
+         batch_mode='OFF',  # Options: 'OFF', 'COLLECTION', 'SCENE', 'OBJECT'
+         use_batch_own_dir=False  # Create separate directories for batch export
          ):
+    import os
 
-    logger.info("save: context %r to filepath %r" % (context,filepath))
-    bpy.path.ensure_ext(filepath, '.x3dz' if use_compress else '.x3d')
+    logger.info("save: context %r to filepath %r" % (context, filepath))
 
+    filepath = bpy.path.ensure_ext(filepath, '.x3dz' if use_compress else '.x3d')
+
+    # Set to Object mode if necessary
     if bpy.ops.object.mode_set.poll():
         bpy.ops.object.mode_set(mode='OBJECT')
 
-    if use_compress:
-        file = gzip_open_utf8(filepath, 'w')
-    else:
-        file = open(filepath, 'w', encoding='utf-8')
+    def get_export_path(local_base_dir, name):
+        """Helper function for directory creation: Generate and return the export path for a batch."""
+        export_dir = os.path.join(local_base_dir, bpy.path.clean_name(name)) if use_batch_own_dir else local_base_dir
+        if use_batch_own_dir and not os.path.exists(export_dir):
+            os.makedirs(export_dir)
+        return os.path.join(export_dir, f"{bpy.path.clean_name(name)}.x3dz" if use_compress else f"{bpy.path.clean_name(name)}.x3d")
 
-    if global_matrix is None:
-        global_matrix = mathutils.Matrix()
+    def _export(export_file, depsgraph, local_scene, view_layer):
+        """Export Wrapper: Write the exported data to the given file."""
+        with (gzip_open_utf8(export_file, 'w') if use_compress else open(export_file, 'w', encoding='utf-8')) as file:
+            export(
+                file,
+                global_matrix or mathutils.Matrix(),
+                depsgraph,
+                local_scene,
+                view_layer,
+                use_mesh_modifiers=use_mesh_modifiers,
+                use_selection=use_selection,
+                use_active_collection=use_active_collection,
+                use_visible=use_visible,
+                use_triangulate=use_triangulate,
+                use_normals=use_normals,
+                use_hierarchy=use_hierarchy,
+                use_h3d=use_h3d,
+                path_mode=path_mode,
+                name_decorations=name_decorations,
+            )
 
-    export(file,
-           global_matrix,
-           context.evaluated_depsgraph_get(),
-           context.scene,
-           context.view_layer,
-           use_mesh_modifiers=use_mesh_modifiers,
-           use_selection=use_selection,
-           use_active_collection=use_active_collection,
-           use_visible=use_visible,
-           use_triangulate=use_triangulate,
-           use_normals=use_normals,
-           use_hierarchy=use_hierarchy,
-           use_h3d=use_h3d,
-           path_mode=path_mode,
-           name_decorations=name_decorations,
-           )
+    base_dir = os.path.dirname(filepath)
+    prefix = os.path.basename(filepath).replace('.x3d', '').replace('.x3dz', '')
 
+    if batch_mode == 'OFF': # regular export with single file logic; upper case as it's most probable
+        logger.info(f"Exporting to single file '{filepath}'")
+        _export(filepath, context.evaluated_depsgraph_get(), context.scene, context.view_layer)
+
+    elif batch_mode == 'COLLECTION': # loop over each collection and change it to the active one
+        use_active_collection = True
+        use_selection = False
+        use_visible = False
+
+        original_collection = context.view_layer.active_layer_collection
+
+        for collection in bpy.data.collections:
+            if not collection.objects:
+                continue  # Skip empty collections
+
+            context.view_layer.active_layer_collection = context.view_layer.layer_collection.children[collection.name]
+            export_path = get_export_path(base_dir, f"{prefix}_{collection.name}")
+            logger.info(f"Exporting collection '{collection.name}' to '{export_path}'")
+
+            _export(export_path, context.evaluated_depsgraph_get(), context.scene, context.view_layer)
+
+        context.view_layer.active_layer_collection = original_collection
+
+    elif batch_mode == 'SCENE': # loop over each scene and provide it to the export func
+        use_active_collection = False
+        use_selection = False
+        use_visible = False
+
+        for scene in bpy.data.scenes:
+            export_path = get_export_path(base_dir, f"{prefix}_{scene.name}")
+            logger.info(f"Exporting scene '{scene.name}' to '{export_path}'")
+
+            _export(export_path, scene.view_layers[0].depsgraph, scene, scene.view_layers[0])
+
+    elif batch_mode == 'OBJECT': # use a temporary scene for exporting individual objects
+        for obj in bpy.data.objects:
+            if (use_visible and not obj.visible_get()) or (use_selection and not obj.select_get()):
+                continue  # Skip objects based on visibility or selection
+
+            export_path = get_export_path(base_dir, f"{prefix}_{obj.name}")
+            logger.info(f"Exporting object '{obj.name}' to '{export_path}'")
+
+            temp_scene = bpy.data.scenes.new(name="X3D_TempExportScene")
+            try:
+                temp_scene.collection.objects.link(obj)
+                temp_scene.view_layers[0].update()
+
+                _export(export_path, temp_scene.view_layers[0].depsgraph, temp_scene, temp_scene.view_layers[0])
+            finally:
+                bpy.data.scenes.remove(temp_scene)
+
+    elif batch_mode == 'OBJECT_HIERARCHY':  # use a temporary scene for exporting individual objects keeping relations
+        exported_objects = set()
+
+        for obj in bpy.data.objects:
+            if (use_visible and not obj.visible_get()) or (use_selection and not obj.select_get()):
+                continue # Skip objects based on visibility or selection
+
+            if obj in exported_objects:
+                continue # Skip if the object has already been exported as part of another hierarchy
+
+            # Find the top-level parent and build hierarchy
+            top_level_parent = obj
+            while top_level_parent.parent:
+                top_level_parent = top_level_parent.parent
+            hierarchy_objects = {top_level_parent} | set(top_level_parent.children_recursive)
+            exported_objects.update(hierarchy_objects)
+
+            export_path = get_export_path(base_dir, f"{prefix}_{top_level_parent.name}")
+            logger.info(f"Exporting object hierarchy '{top_level_parent.name}' to '{export_path}'")
+
+            temp_scene = bpy.data.scenes.new(name="X3D_TempExportScene")
+            try:
+                for hierarchy_obj in hierarchy_objects:
+                    temp_scene.collection.objects.link(hierarchy_obj)
+
+                temp_scene.view_layers[0].update()
+
+                _export(export_path, temp_scene.view_layers[0].depsgraph, temp_scene, temp_scene.view_layers[0])
+            finally:
+                bpy.data.scenes.remove(temp_scene)
+
+    else: # regular export with single file logic as fallback
+        logger.info(f"Exporting to single file '{filepath}'")
+        _export(filepath, context.evaluated_depsgraph_get(), context.scene, context.view_layer)
+
+    logger.info("Export completed")
     return {'FINISHED'}
