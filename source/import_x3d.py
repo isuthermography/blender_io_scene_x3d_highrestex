@@ -1292,27 +1292,29 @@ class vrmlNode(object):
             return None
 
 
+
 def gzipOpen(path):
     import gzip
 
     data = None
-    try:
-        data = gzip.open(path, 'r').read()
-    except:
-        pass
+    file_ext = os.path.splitext(path)[1].lower()
 
-    if data is None:
-        try:
-            filehandle = open(path, 'r', encoding='utf-8', errors='surrogateescape')
-            data = filehandle.read()
-            filehandle.close()
-        except:
-            import traceback
-            traceback.print_exc()
-    else:
-        data = data.decode(encoding='utf-8', errors='surrogateescape')
+    try:
+        if file_ext in ['.x3dz']:
+            # Handle .x3dz files
+            with gzip.open(path, 'rb') as file:
+                data = file.read()
+            data = data.decode(encoding='utf-8', errors='surrogateescape')
+        else:
+            # Handle regular text files
+            with open(path, 'r', encoding='utf-8', errors='surrogateescape') as file:
+                data = file.read()
+    except Exception:
+        import traceback
+        traceback.print_exc()
 
     return data
+
 
 
 def vrml_parse(path):
@@ -3996,9 +3998,9 @@ def load_web3d(
         bpycollection = bpy.context.view_layer.active_layer_collection.collection
 
     # root_node = vrml_parse('/_Cylinder.wrl')
-    if filepath.lower().endswith('.x3d'):
+    if filepath.lower().endswith(('.x3d', '.x3dz')):
         root_node, msg = x3d_parse(filepath)
-    else:
+    else: # .wrl, #.x3dv
         root_node, msg = vrml_parse(filepath)
 
     if not root_node:

@@ -65,7 +65,7 @@ class ImportX3D(bpy.types.Operator, ImportHelper):
 
     filename_ext = ".x3d"
 
-    filter_glob: StringProperty(default="*.x3d;*.wrl;*x3dv", options={'HIDDEN'})
+    filter_glob: StringProperty(default="*.x3d;*.wrl;*x3dv;*.x3dz", options={'HIDDEN'})
 
     files: CollectionProperty(
         name="File Path",
@@ -431,8 +431,8 @@ class IO_FH_X3D(bpy.types.FileHandler):
     bl_label = "X3D"
     bl_import_operator = "import_scene.x3d"
     bl_export_operator = "export_scene.x3d"
-    bl_file_extensions = ".x3d;.wrl;.x3dv"
-    # officially supported: .x3d; .wrl
+    bl_file_extensions = ".x3d;.wrl;.x3dv;.x3dz"
+    # officially supported: .x3d; .wrl; .x3dz
     # partially supported: .x3dv (gets parsed as vrml and thus may not fully work)
 
     @classmethod
