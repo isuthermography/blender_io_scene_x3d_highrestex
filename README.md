@@ -1,6 +1,6 @@
 # Web3D X3D/VRML2 format Add-on
 
-## Features & Documen
+## Features & Documentation
 see [Web3D X3D/VRML2 Documentation](https://projects.blender.org/extensions/io_scene_x3d/wiki)
 
 ### Import file formats
