@@ -1,14 +1,17 @@
 # Web3D X3D/VRML2 format Add-on
 
-## Features
+## Features & Documen
 see [Web3D X3D/VRML2 Documentation](https://projects.blender.org/extensions/io_scene_x3d/wiki)
 
 ### Import file formats
 - .x3d
+- .x3dz
+- .x3dv
 - .wrl
 
 ### Export file formats
 - .x3d
+- .x3dz (compression enabled)
 
 ## Guides
 
@@ -52,11 +55,19 @@ Original authors: Campbell Barton, Bart, Bastien Montagne, Seva Alekseyev
 For deeper understanding of both file formats supported by this extension, refer to:
 - [VRML (.wrl)](https://graphcomp.com/info/specs/sgi/vrml/)
 - [X3D (.x3d)](https://www.web3d.org/specifications/) and [X3D V3.3(.x3d)](https://www.web3d.org/documents/specifications/19775-1/V3.3/index.html)
+- [TODO: X3D V4.0](https://www.web3d.org/documents/specifications/19775-1/V4.0/index.html)
 
 Comparison software:
 - [FreeWRL](https://freewrl.sourceforge.io/)
 - [x3dom](https://www.x3dom.org/)
 - [x_ite](https://create3000.github.io/x_ite/)
+- [Castle Engine/Castle Model Viewer](https://castle-engine.io/castle-model-viewer) by @Michalis-Kamburelis
+
+## Test Files
+- [Import: Demo Files by Web3D Consortium](https://www.web3d.org/x3d/content/examples/Basic/index.html)
+- [Import: Castle Engine Demo Models - X3D/VRML folder by Michalis-Kamburelis](https://castle-engine.io/demo_models.php)
+- [Export: Blender Tests by Michalis-Kamburelis](https://github.com/michaliskambi/x3d-tests/tree/master/blender_tests)
+- Export: TODO
 
 ## License
 [GPL-3.0](LICENSE.txt)
