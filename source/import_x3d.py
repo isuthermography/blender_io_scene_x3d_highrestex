@@ -2892,15 +2892,13 @@ def appearance_CreateDefaultMaterial():
     return bpymat_wrap
 
 
-def download_image(url, output_path=None):
-    """
-    Downloads an image from the web and saves it to disk.
-    """
+def web_resource_download_helper(url, default_ext, default_name, output_path=None):
+    """ Downloads a web resource from a url and saves it to output_path on disk. E.g. image file """
     if url in download_cache: # check cache first for same file to save bandwidth
         return download_cache[url]
 
-    if not bpy.app.online_access: # image download requires network permission which is not always granted
-        print("Can't download web image: online access denied by user")
+    if not bpy.app.online_access: # web download requires network permission which is not always granted
+        print("Can't download web resource: online access denied by user")
         return None
 
     import requests
@@ -2919,8 +2917,8 @@ def download_image(url, output_path=None):
 
         # Get the file extension from the content type and Generate a filename
         content_type = response.headers.get('Content-Type', '')
-        ext = guess_extension(content_type.split(';')[0].strip()) or '.jpg'
-        filename = os.path.basename(url.split('?')[0]) or "downloaded_image"
+        ext = guess_extension(content_type.split(';')[0].strip()) or default_ext
+        filename = os.path.basename(url.split('?')[0]) or default_name
         if '.' not in filename:  # Ensure filename has an extension
             filename += ext
 
@@ -2933,8 +2931,15 @@ def download_image(url, output_path=None):
         return full_path
 
     except Exception as e:
-        print(f"Failed to download image: {e}")
+        print(f"Failed to download web resource: {e}")
         return None
+
+
+def download_image(url, output_path=None):
+    """
+    Downloads an image from the web and saves it to disk.
+    """
+    return web_resource_download_helper(url, '.jpg', "downloaded_image", output_path=output_path)
 
 
 def appearance_LoadImageTextureFile(ima_urls, node):
@@ -3785,6 +3790,121 @@ def importTransform(bpycollection, node, ancestry, global_matrix):
     bpyob.empty_display_size = 0.2
 
 
+def importAudio(bpycollection, node, ancestry, global_matrix):
+    """ Place speaker object and load content of source if any """
+
+    # audio can be either audio or movie file, doesn't matter
+    source = node.getChildBySpec('AudioClip') or node.getChildBySpec('MovieTexture')
+
+    name = node.getDefName()
+    if not name:
+        name = 'Sound'
+
+    # audio_urls is a list or None
+    audio_urls = source.getFieldAsMFStringArray('url', None, ancestry)
+
+    if not audio_urls and source: # only return for corrupt node
+        print("\twarning, Sound source with no URL, this is odd")
+        return None
+
+    bpyaudio = load_audio_file(audio_urls, node)
+    if not bpyaudio and source: # only return for corrupt node
+        print("\twarning, Sound source failed to load")
+        return None
+
+    location = node.getFieldAsFloatTuple('location', (0.0, 0.0, 0.0), ancestry, conversion_scale)
+    direction = node.getFieldAsFloatTuple('direction', (0.0, 0.0, 0.0), ancestry, conversion_scale)
+    volume = node.getFieldAsFloat('intensity', 1.0, ancestry, conversion_scale)
+    # Back and Front is not available in blender, thus only use the max value of both
+    max_distance = max(
+        node.getFieldAsFloat('maxBack', None, ancestry, conversion_scale),
+        node.getFieldAsFloat('maxFront', None, ancestry, conversion_scale)
+    )
+    ref_distance = max(
+        node.getFieldAsFloat('minBack', None, ancestry, conversion_scale),
+        node.getFieldAsFloat('minFront', None, ancestry, conversion_scale)
+    )
+
+    bpy.ops.object.speaker_add(location=location)
+    bpyspeaker = node.blendData = bpy.context.object
+
+    # calculate speakers rotation
+    # maybe this should get influenced by axis import settings? (not yet implemented)
+    local_axis = mathutils.Vector((0, 0, 0))
+    rotation = local_axis.rotation_difference(direction)
+    bpyspeaker.rotation_mode = 'QUATERNION'
+    bpyspeaker.rotation_quaternion = rotation
+
+    bpyspeaker.data.name = name
+    bpyspeaker.data.volume = volume
+    if max_distance:
+        bpyspeaker.data.distance_max = max_distance
+    if ref_distance:
+        bpyspeaker.data.distance_reference = ref_distance
+
+    if source: # if source is None, create speaker nonetheless according to spec
+        pitch = source.getFieldAsFloat('pitch', 1.0, ancestry, conversion_scale)
+        description = source.getFieldAsString('description', None, ancestry)
+        start_time_seconds = source.getFieldAsFloat('startTime', 0.0, ancestry, conversion_scale)
+        stop_time_seconds = source.getFieldAsFloat('stopTime', 0.0, ancestry, conversion_scale)
+        # unfortunately loop is not available within blender 3d speaker
+
+        bpyspeaker.data.sound = bpyaudio
+        bpyspeaker.data.pitch = pitch
+        if description:
+            bpyspeaker["description"] = description
+
+        # Handle startTime using NLA strip Frame Start
+        fps = bpy.context.scene.render.fps
+        start_frame = int(0 + start_time_seconds * fps)
+        if start_time_seconds > 0.0:
+            nla_tracks = bpyspeaker.animation_data.nla_tracks if bpyspeaker.animation_data else None
+            if nla_tracks:
+                for track in nla_tracks:
+                    for strip in track.strips:
+                        strip.frame_start_ui = start_frame
+        # Handle stopTime by keyframing volume property
+        if stop_time_seconds > 0.0 and stop_time_seconds > start_time_seconds:
+            end_frame = int(0 + stop_time_seconds * fps)
+            bpyspeaker.data.keyframe_insert(data_path="volume", frame=start_frame)
+            bpyspeaker.data.keyframe_insert(data_path="volume", frame=end_frame - 1)
+            bpyspeaker.data.volume = 0.0
+            bpyspeaker.data.keyframe_insert(data_path="volume", frame=end_frame)
+
+    # this block is odd but required due to an update bug in blender for speakers
+    # see https://projects.blender.org/blender/blender/issues/131826
+    bpyspeaker.data.update_tag()
+    bpycollection.objects.unlink(bpyspeaker)
+    bpycollection.objects.link(bpyspeaker)
+
+
+def load_audio_file(audio_urls, node):
+    """ Loads an audio file from the first valid url, either from web or from disk (absolute/relative path) """
+    bpyaudio = None
+
+    for f in audio_urls:
+        file_path = os.path.dirname(current_file_path)
+        if f.startswith(('https://', 'http://', 'www.')): # url could be a web url > download audio clip first
+            f = download_audio(f, file_path) or f
+        else:
+            # Check if the file is a relative or absolute path
+            if not os.path.isabs(f):
+                f = os.path.join(os.path.dirname(current_file_path), f)
+
+        if os.path.exists(f):
+            bpyaudio = bpy.data.sounds.load(f, check_existing=True)
+            if bpyaudio:
+                break
+
+    return bpyaudio
+
+def download_audio(url, output_path=None):
+    """
+    Downloads an audio from the web and saves it to disk.
+    """
+    return web_resource_download_helper(url, '.wav', "downloaded_audio", output_path=output_path)
+
+
 # def importTimeSensor(node):
 def action_fcurve_ensure(action, data_path, array_index):
     for fcu in action.fcurves:
@@ -4038,6 +4158,8 @@ def load_web3d(
             # Only use transform nodes when we are not importing a flat object hierarchy
             if not PREF_FLAT:
                 importTransform(bpycollection, node, ancestry, global_matrix)
+        elif spec == 'Sound':
+            importAudio(bpycollection, node, ancestry, global_matrix)
             '''
         # These are delt with later within importRoute
         elif spec=='PositionInterpolator':

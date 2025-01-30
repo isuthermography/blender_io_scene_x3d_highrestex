@@ -26,6 +26,8 @@ H3D_TOP_LEVEL = 'TOP_LEVEL_TI'
 H3D_CAMERA_FOLLOW = 'CAMERA_FOLLOW_TRANSFORM'
 H3D_VIEW_MATRIX = 'view_matrix'
 
+# local blender export caches
+media_cache = {}
 
 def clamp_color(col):
     return tuple([max(min(c, 1.0), 0.0) for c in col])
@@ -236,11 +238,13 @@ def export(file,
         uuid_cache_mesh = {}      # mesh
         uuid_cache_material = {}  # material
         uuid_cache_image = {}     # image
+        uuid_cache_sound = {}      # sound
         uuid_cache_world = {}     # world
         CA_ = 'CA_'
         OB_ = 'OB_'
         ME_ = 'ME_'
         IM_ = 'IM_'
+        SO_ = 'SO_'
         WO_ = 'WO_'
         MA_ = 'MA_'
         LA_ = 'LA_'
@@ -256,12 +260,14 @@ def export(file,
         uuid_cache_mesh = uuid_cache             # mesh
         uuid_cache_material = uuid_cache         # material
         uuid_cache_image = uuid_cache            # image
+        uuid_cache_sound = uuid_cache            # sound
         uuid_cache_world = uuid_cache            # world
         del uuid_cache
         CA_ = ''
         OB_ = ''
         ME_ = ''
         IM_ = ''
+        SO_ = ''
         WO_ = ''
         MA_ = ''
         LA_ = ''
@@ -499,6 +505,99 @@ def export(file,
         fw(ident_step + 'radius="%.4f" \n' % light.cutoff_distance)
         fw(ident_step + 'location="%.4f %.4f %.4f"\n' % location)
         fw(ident_step + '/>\n')
+
+    def writeSpeaker(ident, obj, matrix, data, world):
+        """ Write speaker object as Sound node and the loaded sound as AudioClip or MovieTexture node """
+
+        speaker_id = quoteattr(unique_name(obj, SO_ + obj.name, uuid_cache_sound, clean_func=clean_def, sep="_"))
+
+        # get position, rotation
+        position = obj.location
+        rotation = obj.rotation_euler
+        # Create a rotation matrix from the Euler angles and normalize for X3D compatibility
+        rotation_matrix = rotation.to_matrix()
+        local_forward = mathutils.Vector((0.0, 0.0, 0.0))
+        global_direction = rotation_matrix @ local_forward
+        global_direction.normalize()
+
+        # get pitch, volume, max_distance, ref_distance
+        pitch = data.pitch
+        volume = data.volume
+        max_distance = data.distance_max
+        ref_distance = data.distance_reference
+
+        # if the volume is animated and currently 0 (likely not intended), we want to get the max volume
+        if volume == 0.0:
+            volume_max = float('-inf')
+            action = data.animation_data.action if data.animation_data else None
+            if action:
+                for fcurve in action.fcurves:
+                    if fcurve.data_path == 'volume':
+                        for keyframe in fcurve.keyframe_points:
+                            volume_max = max(volume_max, keyframe.co[1])
+            if volume_max > 0.0:
+                volume = volume_max
+
+        # get audio filepath
+        sound_file = getSoundFilepath(data.sound) if data.sound else ""
+
+        # write Sound node as parent
+        ident_step = ident + (' ' * (-len(ident) + fw('%s<Sound ' % ident)))
+        fw('DEF=%s\n' % speaker_id) # DEF doesn't really make sense as at least location is different...
+        fw('%sdirection="%.3f %.3f %.3f\n"' % (ident_step, global_direction.x, global_direction.y, global_direction.z))
+        fw('%sintensity="%.3f"\n' % (ident_step, volume))
+        fw('%slocation="%.3f %.3f %.3f"\n' % (ident_step, position.x, position.y, position.z))
+        fw('%smaxBack="%.3f"\n' % (ident_step, max_distance))
+        fw('%smaxFront="%.3f"\n' % (ident_step, max_distance))
+        fw('%sminBack="%.3f"\n' % (ident_step, ref_distance))
+        fw('%sminFront="%.3f">\n' % (ident_step, ref_distance))
+        # write source as child node
+        if sound_file:
+            sound_id = quoteattr(unique_name(data.sound, SO_ + sound_file, uuid_cache_sound, clean_func=clean_def, sep="_"))
+            file_extension = os.path.splitext(sound_file)[1].lower()
+
+            start_time_seconds = 0.0
+            stop_time_seconds = 0.0
+            fps = bpy.context.scene.render.fps
+            # Retrieve startTime from NLA strip Frame Start
+            nla_tracks = obj.animation_data.nla_tracks if obj.animation_data else None
+            if nla_tracks:
+                for track in nla_tracks:
+                    for strip in track.strips:
+                        frame_start = strip.frame_start_ui
+                        if frame_start:
+                            start_time_seconds = frame_start / fps
+                            break
+            # Retrieve stopTime from volume f-curve: last occurrence of volume 0 is likely the stop
+            action = data.animation_data.action if data.animation_data else None
+            if action:
+                for fcurve in action.fcurves:
+                    if fcurve.data_path == 'volume':
+                        for keyframe in fcurve.keyframe_points:
+                            if keyframe.co[1] <= 0.0:
+                                stop_time_seconds = keyframe.co[0] / fps
+
+            # unlike shader nodes we have to manually check the file extension
+            if file_extension in ['.mp4', '.mpg', '.avi', '.mov', '.mkv', '.webm', '.wmv']: # MovieTexture
+                ident_step_sec = ident_step + (' ' * (-len(ident_step) + fw('%s<MovieTexture ' % ident_step)))
+                if data.sound.tag:
+                    fw('USE=%s/>\n' % sound_id)
+                    return
+                fw('DEF=%s\n' % sound_id)
+            else: # AudioClip
+                ident_step_sec = ident_step + (' ' * (-len(ident_step) + fw('%s<AudioClip ' % ident_step)))
+                if data.sound.tag:
+                    fw('USE=%s/>\n' % sound_id)
+                    return
+                fw('DEF=%s\n' % sound_id)
+                fw('%spitch="%.3f"\n' % (ident_step_sec, pitch))
+            fw(ident_step_sec + "url='%s'\n" % ' '.join(['"%s"' % escape(f) for f in [sound_file]]))
+            fw('%sloop="true"\n' % ident_step_sec)
+            fw('%sstartTime="%.3f"\n' % (ident_step_sec, start_time_seconds))
+            fw('%sstopTime="%.3f"\n' % (ident_step_sec, stop_time_seconds))
+            fw(ident_step_sec + '/>\n')
+            data.sound.tag = True # set tag for def/use
+        fw(ident_step + '</Sound>\n')
 
     def writeIndexedFaceSet(ident, obj, mesh, mesh_name, matrix, world):
         obj_id = quoteattr(unique_name(obj, OB_ + obj.name, uuid_cache_object, clean_func=clean_def, sep="_"))
@@ -1274,14 +1373,24 @@ def export(file,
                 writeTextureTransform(ident, imageTextureNode)
 
     def getImageFilepath(image):
-        """ Get image filepath, warpper for getMediaFilepath() """
+        """ Get image filepath, wrapper for getMediaFilepath() """
         return getMediaFilepath(image, {'JPEG': '.jpg', 'PNG': '.png'}, 'PNG')
+
+    def getSoundFilepath(sound):
+        """ Get sound filepath, wrapper for getMediaFilepath() """
+        return getMediaFilepath(
+            sound,
+            {'MP3': '.mp3', 'WAV': '.wav', 'MIDI': '.midi', 'OGG': '.ogg', 'AAC': '.aac'},
+            'WAV'
+        )
 
     def getMediaFilepath(media_file, allowed_ext: dict, default_ext: str):
         """
         Get media (e.g. image/sound/movie file) filepath based on users path mode choice,
         checks also if filetype is supported.
         """
+        if media_file in media_cache:
+            return media_cache[media_file]
 
         filepath_ref = ""
         filepath = ""
@@ -1334,7 +1443,10 @@ def export(file,
             media_file.library)
 
         # following replaces Windows filepath separator with slash separator for relative urls
-        return filepath_ref.replace("\\", "/")
+        filepath_ref = filepath_ref.replace("\\", "/")
+
+        media_cache[media_file] = filepath_ref
+        return filepath_ref
 
     def writeMovieTextureProperties(ident, textureNode):
         movie_properties = get_movie_texture_properties(textureNode)
@@ -1537,6 +1649,11 @@ def export(file,
                     writeDirectionalLight(ident, obj, obj_matrix, data, world)
                 else:
                     writeDirectionalLight(ident, obj, obj_matrix, data, world)
+
+            elif obj_type == 'SPEAKER':
+                data = obj.data
+                writeSpeaker(ident, obj, obj_matrix, data, world)
+
             else:
                 # print "Info: Ignoring [%s], object type [%s] not handle yet" % (object.name,object.getType)
                 pass
@@ -1565,6 +1682,9 @@ def export(file,
         bpy.data.meshes.tag(False)
         bpy.data.materials.tag(False)
         bpy.data.images.tag(False)
+        bpy.data.textures.tag(False)
+        bpy.data.sounds.tag(False)
+        bpy.data.speakers.tag(False)
 
         if use_selection:
             if use_active_collection:
