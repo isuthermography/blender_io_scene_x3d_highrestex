@@ -18,7 +18,8 @@ import mathutils
 
 from bpy_extras.io_utils import create_derived_objects
 
-from .material_node_search import imageTexture_in_material
+from .material_node_search import (imageTexture_in_material, get_diffuse_color, get_emissive_color,
+                                   get_vector_mapping_properties, get_movie_texture_properties)
 
 # h3d defines
 H3D_TOP_LEVEL = 'TOP_LEVEL_TI'
@@ -277,11 +278,11 @@ def export(file,
         # the bpy_extras.io_utils.path_reference_copy utility
         blender_tempfolder = bpy.app.tempdir
         import uuid
-        temporary_image_directory = os.path.join(blender_tempfolder,uuid.uuid4().hex)
-        os.mkdir(temporary_image_directory)
-        logger.info("temporary_image_directory: %s" % temporary_image_directory )
+        temp_media_directory = os.path.join(blender_tempfolder,uuid.uuid4().hex)
+        os.mkdir(temp_media_directory)
+        logger.info("temp_media_directory: %s" % temp_media_directory )
     else:
-        temporary_image_directory = None
+        temp_media_directory = None
 
 
     # store names of newly created meshes, so we dont overlap
@@ -901,26 +902,40 @@ def export(file,
             fw('%s</Collision>\n' % ident)
 
     def writeMaterial(ident, material, world):
-        material_id = quoteattr(unique_name(material, MA_ + material.name, uuid_cache_material, clean_func=clean_def, sep="_"))
+        """
+        Writes the material properties to the output, using material node tree information.
 
-        # look up material name, use it if available
+        Args:
+            ident (str): Indentation for the output.
+            material: The material instance.
+            world: The world settings for ambient color.
+
+        Returns:
+            None
+        """
+        material_id = quoteattr(
+            unique_name(material, MA_ + material.name, uuid_cache_material, clean_func=clean_def, sep="_"))
+
+        # Look up material name, use it if available
         if material.tag:
             fw('%s<Material USE=%s />\n' % (ident, material_id))
         else:
             material.tag = True
 
-            emit = 0.0  # material.emit
             ambient = 0.0  # material.ambient / 3.0
-            diffuseColor = material.diffuse_color[:3]
+            diffuse_color = get_diffuse_color(material) or (0.8, 0.8, 0.8, 1.0)  # Default diffuse color
+            emissive_color = get_emissive_color(material) or (0.0, 0.0, 0.0, 1.0)  # Default emissive color
+
             if world and 0:
                 ambiColor = ((material.ambient * 2.0) * world.ambient_color)[:]
             else:
                 ambiColor = 0.0, 0.0, 0.0
 
-            emitColor = tuple(((c * emit) + ambiColor[i]) / 2.0 for i, c in enumerate(diffuseColor))
+            emitColor = tuple(((c * ambient) + ambiColor[i]) / 2.0 for i, c in enumerate(emissive_color[:3]))
             shininess = material.specular_intensity
-            specColor = tuple((c + 0.001) / (1.25 / (material.specular_intensity + 0.001)) for c in material.specular_color)
-            transp = 1.0 - material.diffuse_color[3]
+            specColor = tuple(
+                (c + 0.001) / (1.25 / (material.specular_intensity + 0.001)) for c in material.specular_color)
+            transp = 1.0 - diffuse_color[3] # alpha only works from principled bsdf, so checking diffuse return is enough
 
             # ~ if material.use_shadeless:
             # ~ ambient = 1.0
@@ -930,12 +945,12 @@ def export(file,
             ident_step = ident + (' ' * (-len(ident) +
                                          fw('%s<Material ' % ident)))
             fw('DEF=%s\n' % material_id)
-            fw(ident_step + 'diffuseColor="%.3f %.3f %.3f"\n' % clamp_color(diffuseColor))
+            fw(ident_step + 'diffuseColor="%.3f %.3f %.3f"\n' % clamp_color(diffuse_color[:3]))
             fw(ident_step + 'specularColor="%.3f %.3f %.3f"\n' % clamp_color(specColor))
-            fw(ident_step + 'emissiveColor="%.3f %.3f %.3f"\n' % clamp_color(emitColor))
+            fw(ident_step + 'emissiveColor="%.3f %.3f %.3f"\n' % clamp_color(emitColor[:3]))
             fw(ident_step + 'ambientIntensity="%.3f"\n' % ambient)
             fw(ident_step + 'shininess="%.3f"\n' % shininess)
-            fw(ident_step + 'transparency="%s"\n' % transp)
+            fw(ident_step + 'transparency="%.3f"\n' % transp)
             fw(ident_step + '/>\n')
 
     def writeMaterialH3D(ident, material, world,
@@ -1217,85 +1232,21 @@ def export(file,
             fw('%s</ComposedShader>\n' % ident)
 
     def writeImageTexture(ident, imageTextureNode):
+        """ Write image or movie texture with texture transform to x3d, path mode is user dependant """
+
         image=imageTextureNode.image
         image_id = quoteattr(unique_name(image, IM_ + image.name, uuid_cache_image, clean_func=clean_def, sep="_"))
         logger.info("write ImageTexture X3D node for %r format %r filepath %r" % (image.name, image.file_format, image.filepath ))
 
-
-
         if image.tag:
             fw('%s<ImageTexture USE=%s />\n' % (ident, image_id))
+            writeTextureTransform(ident, imageTextureNode)
         else:
             image.tag = True
 
-            ident_step = ident + (' ' * (-len(ident) +
-                                         fw('%s<ImageTexture ' % ident)))
-            fw('DEF=%s\n' % image_id)
-
-            if (path_mode != 'COPY') and not image.filepath :
-                # this is the case where the path_mode choice is intended to
-                # reference an existing image file, but no filepath for that
-                # file is specified in the image data structure
-                logger.warning("no filepath available for Path Mode %s" % path_mode )
-
-            # setting COPY_SUBDIR to None in calls to
-            # bpy_extras.io_utils.path_reference will cause copied images
-            # to be placed in same directory as the exported X3D file.
-            COPY_SUBDIR=None
-            has_packed_file =   image.packed_file and image.packed_file.size > 0
-            if path_mode == 'COPY' and ( has_packed_file or not image.filepath) :
-                # write to temporary folder so that
-                # bpy_extras.io_utils.path_reference_copy can
-                # copy it final  location at end of export
-                use_file_format = image.file_format or 'PNG'
-
-                try:
-                    image_ext = {'JPEG':'.jpg' , 'PNG':'.png'}[use_file_format]
-                except KeyError:
-                    # if image data not in JPEG or PNG it is not supported in
-                    # X3D standard. If image file_format is "FFMPEG" that is a movie
-                    # format, and would be referenced in an X3D MovieTexture node
-                    if use_file_format == "FFMPEG" :
-                        logger.warning("movie textures not supported for X3D export")
-                    else:
-                        logger.warning("image texture file format %r not supported" % use_file_format)
-                else:
-                    image_base = os.path.splitext( os.path.basename(image.name))[0]
-                    image_filename = image_base + image_ext
-
-                    filepath_full = os.path.join(temporary_image_directory, image_filename)
-
-                    logger.info("writing image for texture to %s" % filepath_full)
-                    image.save( filepath = filepath_full )
-
-                    filepath_ref = bpy_extras.io_utils.path_reference(
-                                    filepath_full,
-                                    temporary_image_directory,
-                                    base_dst,
-                                    path_mode,
-                                    COPY_SUBDIR,
-                                    copy_set,
-                                    image.library)
-            else:
-                filepath = image.filepath
-                filepath_full = bpy.path.abspath(filepath, library=image.library)
-                filepath_ref = bpy_extras.io_utils.path_reference(
-                                filepath_full,
-                                base_src,
-                                base_dst,
-                                path_mode,
-                                COPY_SUBDIR,
-                                copy_set,
-                                image.library)
-
-            # following replaces Windows filepath separator with slash separator
-            # for relative urls
-            filepath_ref = filepath_ref.replace("\\", "/")
-
+            filepath_ref = getImageFilepath(image)
             image_urls =  [ filepath_ref ]
-
             logger.info("node urls: %s" % (image_urls,))
-            fw(ident_step + "url='%s'\n" % ' '.join(['"%s"' % escape(f) for f in image_urls]))
 
             # default value of repeatS, repeatT fields is true, so only need to
             # specify if extension value is CLIP
@@ -1303,9 +1254,118 @@ def export(file,
             if imageTextureNode.extension not in x3d_supported_extension:
                 logger.warning("imageTextureNode.extension value %s unsupported in X3D" % imageTextureNode.extension)
 
-            if imageTextureNode.extension == "CLIP":
-                fw(ident_step + "repeatS='false' repeatT='false'")
-            fw(ident_step + '/>\n')
+            if image_urls:
+                ident_step = ident + (' ' * (-len(ident) +
+                                             fw(
+                                                 ('%s<MovieTexture ' if image.source == 'MOVIE' else '%s<ImageTexture ')
+                                                 % ident)
+                                             ))
+                fw('DEF=%s\n' % image_id)
+                fw(ident_step + "url='%s'\n" % ' '.join(['"%s"' % escape(f) for f in image_urls]))
+
+                if imageTextureNode.extension == "CLIP":
+                    fw(ident_step + "repeatS='false' repeatT='false'")
+
+                if image.source == 'MOVIE':
+                    writeMovieTextureProperties(ident_step, imageTextureNode)
+
+                fw(ident_step + '/>\n')
+
+                writeTextureTransform(ident, imageTextureNode)
+
+    def getImageFilepath(image):
+        """ Get image filepath, warpper for getMediaFilepath() """
+        return getMediaFilepath(image, {'JPEG': '.jpg', 'PNG': '.png'}, 'PNG')
+
+    def getMediaFilepath(media_file, allowed_ext: dict, default_ext: str):
+        """
+        Get media (e.g. image/sound/movie file) filepath based on users path mode choice,
+        checks also if filetype is supported.
+        """
+
+        filepath_ref = ""
+        filepath = ""
+
+        if (path_mode != 'COPY') and not media_file.filepath:
+            # return when file is not packed and has no filepath to lookup
+            logger.warning("no filepath available for Path Mode %s" % path_mode)
+            return filepath_ref
+
+        # setting COPY_SUBDIR to None in calls to bpy_extras.io_utils.path_reference
+        # will place the file in the same directory as the exported X3D file.
+        COPY_SUBDIR = None
+
+        has_packed_file = media_file.packed_file and media_file.packed_file.size > 0
+        if path_mode == 'COPY' and (has_packed_file or not media_file.filepath):
+            # write to temporary folder so that bpy_extras.io_utils.path_reference_copy can
+            # copy it to the final location at end of export
+            use_file_format = media_file.file_format or default_ext
+            try:
+                # check if media type is allowed
+                file_ext = allowed_ext[use_file_format]
+            except KeyError:
+                # we land here if the media type is not supported by the x3d standard
+                # movie files will pass for later processing as all mov files can get used as texture or sound
+                if media_file.source == 'MOVIE':
+                    logger.debug("movie texture detected instead of image")
+                    file_ext = use_file_format
+                    pass
+                else:
+                    logger.warning("file format %r not supported" % use_file_format)
+                    return filepath_ref
+            else: # COPY: copy to new location and provide that as filepath
+                file_base = os.path.splitext(os.path.basename(media_file.name))[0]
+                filepath = os.path.join(temp_media_directory, file_base + file_ext)
+                filepath_ref = temp_media_directory
+
+                logger.info("writing media to %s" % filepath)
+                media_file.save(filepath=filepath)
+        else: # RELATIVE: provide relative filepath
+            filepath = bpy.path.abspath(media_file.filepath, library=media_file.library)
+            filepath_ref = base_src
+
+        filepath_ref = bpy_extras.io_utils.path_reference(
+            filepath,
+            filepath_ref,
+            base_dst,
+            path_mode,
+            COPY_SUBDIR,
+            copy_set,
+            media_file.library)
+
+        # following replaces Windows filepath separator with slash separator for relative urls
+        return filepath_ref.replace("\\", "/")
+
+    def writeMovieTextureProperties(ident, textureNode):
+        movie_properties = get_movie_texture_properties(textureNode)
+        if not movie_properties:
+            return
+        loop = movie_properties.get("use_cyclic", False) or movie_properties.get("use_auto_refresh", False)
+        fps = bpy.context.scene.render.fps
+        start = movie_properties.get("frame_start", 0) / fps
+        end = movie_properties.get("frame_duration", 0) / fps
+
+        fw('%sloop="%s" \n' % (ident, str(loop).lower()))
+        fw('%sstartTime="%.3f" \n' % (ident, start))
+        # with stop time set the movie won't play for whatever reason, leaving it disabled for now...
+        # fw('%sstopTime="%.3f" \n' % (ident, end))
+
+    def writeTextureTransform(ident, textureNode):
+        """ Search for a vector mapping node attached to the image texture and write it's values to the x3d file """
+        mapping_properties = get_vector_mapping_properties(textureNode) if textureNode else {}
+        if not mapping_properties:
+            return
+        rotation = mapping_properties.get("rotation", None)
+        scale = mapping_properties.get("scale", None)
+        translation = mapping_properties.get("translation", None)
+        ident_step = ident + (' ' * (-len(ident) + fw('%s<TextureTransform \n' % ident)))
+        if rotation:
+            fw('%srotation="%s" \n' % (ident_step, rotation[2]))
+        if scale:
+            fw('%sscale="%.3f %.3f" \n' % (ident_step, scale[0], scale[1]))
+        if translation:
+            fw('%stranslation="%.3f %.3f" \n' % (ident_step, translation[0], translation[1]))
+        fw('%s/>\n' % ident_step)
 
     def writeBackground(ident, world):
 
