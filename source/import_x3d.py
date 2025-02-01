@@ -1810,7 +1810,7 @@ def importMesh_IndexedTriangleStripSet(geom, ancestry):
 
     # Read the faces
     index = geom.getFieldAsArray('index', 0, ancestry)
-    while index[-1] == -1:
+    while index and index[-1] == -1:
         del index[-1]
     ngaps = sum(1 for i in index if i == -1)
     num_polys = len(index) - 2 - 3 * ngaps
@@ -1845,8 +1845,11 @@ def importMesh_IndexedTriangleFanSet(geom, ancestry):
 
     # Read the faces
     index = geom.getFieldAsArray('index', 0, ancestry)
-    while index[-1] == -1:
+
+    # remove trailing -1 values , normally there should only be 0 or 1 of these
+    while index and index[-1] == -1:
         del index[-1]
+
     ngaps = sum(1 for i in index if i == -1)
     num_polys = len(index) - 2 - 3 * ngaps
     bpymesh.loops.add(num_polys * 3)
