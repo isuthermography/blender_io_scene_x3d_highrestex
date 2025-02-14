@@ -547,6 +547,7 @@ def export(file,
 
     def writeSpeaker(ident, obj, matrix, data, world):
         """ Write speaker object as Sound node and the loaded sound as AudioClip or MovieTexture node """
+        from . import blender_version_higher_44  # hate this part...
 
         speaker_id = quoteattr(unique_name(obj, SO_ + obj.name, uuid_cache_sound, clean_func=clean_def, sep="_"))
 
@@ -570,7 +571,9 @@ def export(file,
             volume_max = float('-inf')
             action = data.animation_data.action if data.animation_data else None
             if action:
-                for fcurve in action.fcurves:
+                # blender 4.4 has new api, so support both 4.4. and 4.2 api
+                for fcurve in action.layers[0].strips[0].channelbag(action.slots[0]).fcurves \
+                    if blender_version_higher_44 else action.fcurves:
                     if fcurve.data_path == 'volume':
                         for keyframe in fcurve.keyframe_points:
                             volume_max = max(volume_max, keyframe.co[1])
@@ -610,7 +613,9 @@ def export(file,
             # Retrieve stopTime from volume f-curve: last occurrence of volume 0 is likely the stop
             action = data.animation_data.action if data.animation_data else None
             if action:
-                for fcurve in action.fcurves:
+                # blender 4.4 has new api, so support both 4.4. and 4.2 api
+                for fcurve in action.layers[0].strips[0].channelbag(action.slots[0]).fcurves \
+                    if blender_version_higher_44 else action.fcurves:
                     if fcurve.data_path == 'volume':
                         for keyframe in fcurve.keyframe_points:
                             if keyframe.co[1] <= 0.0:

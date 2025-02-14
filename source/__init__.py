@@ -53,6 +53,7 @@ from .prefs import X3D_Preferences
 
 blender_version = bpy.app.version
 blender_version_higher_279 = blender_version[0] > 2 or (blender_version[0] == 2 and blender_version[1] >= 79)
+blender_version_higher_44 = blender_version[0] > 4 and blender_version[1] >= 4
 
 lang = get_language()
 

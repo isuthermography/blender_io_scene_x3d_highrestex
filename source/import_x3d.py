@@ -3955,11 +3955,15 @@ def download_audio(url, output_path=None):
 
 # def importTimeSensor(node):
 def action_fcurve_ensure(action, data_path, array_index):
-    for fcu in action.fcurves:
+    from . import blender_version_higher_44
+    # blender 4.4 has new api, so support both 4.4. and 4.2 api
+    for fcu in action.layers[0].strips[0].channelbag(action.slots[0]).fcurves\
+        if blender_version_higher_44 else action.fcurves:
         if fcu.data_path == data_path and fcu.array_index == array_index:
             return fcu
 
-    return action.fcurves.new(data_path=data_path, index=array_index)
+    return (action.layers[0].strips[0].channelbag(action.slots[0]).fcurves
+            if blender_version_higher_44 else action.fcurves).new(data_path=data_path, index=array_index)
 
 
 def translatePositionInterpolator(node, action, ancestry):
