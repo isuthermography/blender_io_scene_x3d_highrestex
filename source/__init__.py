@@ -314,7 +314,6 @@ class ExportX3D(bpy.types.Operator, ExportHelper):
         description=translate(lang, "scale_description"),
     )
 
-
     path_mode: EnumProperty(
         name=translate(lang, "path_mode_name"),
         description= translate(lang, "path_mode_description"),
@@ -325,6 +324,125 @@ class ExportX3D(bpy.types.Operator, ExportHelper):
             ('COPY', translate(lang, "copy_mode"), translate(lang, "copy_mode_description")),
         ),
         default='COPY',
+    )
+
+    meta_creator: StringProperty(
+        name=translate(lang, "meta_creator"),
+        default="",
+        description=translate(lang, "meta_creator_description"),
+    )
+    meta_title: StringProperty(
+        name=translate(lang, "meta_title"),
+        default="",
+        description=translate(lang, "meta_title_description"),
+    )
+    meta_description: StringProperty(
+        name=translate(lang, "meta_description"),
+        default="",
+        description=translate(lang, "meta_description_description"),
+    )
+    meta_keywords: StringProperty(
+        name=translate(lang, "meta_keywords"),
+        default="",
+        description=translate(lang, "meta_keywords_description"),
+    )
+    meta_reference: StringProperty(
+        name=translate(lang, "meta_reference"),
+        default="",
+        description=translate(lang, "meta_reference_description"),
+    )
+
+    meta_license: EnumProperty(
+        name=translate(lang, "meta_license"),
+        description=translate(lang, "meta_license_description"),
+        items=(('NONE',
+                translate(lang, "meta_license_none"),
+                translate(lang, "meta_license_none_description")),
+               ('CUSTOM',
+                translate(lang, "custom"),
+                translate(lang, "meta_license_custom_description")),
+               None, # Creative Commons (CC) Licenses
+               ('CC_BY_4.0',
+                translate(lang, "meta_license_CC_BY_4.0"),
+                translate(lang, "meta_license_CC_BY_4.0_description")),
+               ('CC_BY-SA_4.0',
+                translate(lang, "meta_license_CC_BY-SA_4.0"),
+                translate(lang, "meta_license_CC_BY-SA_4.0_description")),
+               ('CC_BY-NC_4.0',
+                translate(lang, "meta_license_CC_BY-NC_4.0"),
+                translate(lang, "meta_license_CC_BY-NC_4.0_description")),
+               ('CC0_1.0',
+                translate(lang, "meta_license_CC0_1.0"),
+                translate(lang, "meta_license_CC0_1.0_description")),
+               ('CC_BY-ND_4.0',
+                translate(lang, "meta_license_CC_BY-ND_4.0"),
+                translate(lang, "meta_license_CC_BY-ND_4.0_description")),
+                None, # Open Source & Free Culture Licenses
+               ('GPL_v3',
+                translate(lang, "meta_license_GPL_v3"),
+                translate(lang, "meta_license_GPL_v3_description")),
+               ('GPL_v2',
+                translate(lang, "meta_license_GPL_v2"),
+                translate(lang, "meta_license_GPL_v2_description")),
+               ('LGPL_v3',
+                translate(lang, "meta_license_LGPL_v3"),
+                translate(lang, "meta_license_LGPL_v3_description")),
+               ('LGPL_v2.1',
+                translate(lang, "meta_license_LGPL_v2.1"),
+                translate(lang, "meta_license_LGPL_v2.1_description")),
+               ('MIT_License',
+                translate(lang, "meta_license_MIT_License"),
+                translate(lang, "meta_license_MIT_License_description")),
+               ('MIT_No_Attribution',
+                translate(lang, "meta_license_MIT_No_Attribution"),
+                translate(lang, "meta_license_MIT_No_Attribution_description")),
+               ('Apache_2.0',
+                translate(lang, "meta_license_Apache_2.0"),
+                translate(lang, "meta_license_Apache_2.0_description")),
+               ('BSD_3',
+                translate(lang, "meta_license_BSD_3"),
+                translate(lang, "meta_license_BSD_3_description")),
+               ('BSD_2',
+                translate(lang, "meta_license_BSD_2"),
+                translate(lang, "meta_license_BSD_2_description")),
+               ('BSD_1',
+                translate(lang, "meta_license_BSD_1"),
+                translate(lang, "meta_license_BSD_1_description")),
+               ('Mozilla_2.0',
+                translate(lang, "meta_license_Mozilla_2.0"),
+                translate(lang, "meta_license_Mozilla_2.0_description")),
+               ('Pixar',
+                translate(lang, "meta_license_Pixar"),
+                translate(lang, "meta_license_Pixar_description")),
+               None, # Proprietary & Commercial Licenses
+               ('Standard_Royalty-Free',
+                translate(lang, "meta_license_Standard_Royalty-Free"),
+                translate(lang, "meta_license_Standard_Royalty-Free_description")),
+               ('Extended_Commercial',
+                translate(lang, "meta_license_Extended_Commercial"),
+                translate(lang, "meta_license_Extended_Commercial_description")),
+               None, # Public Domain & Government Licenses
+               ('Public_Domain',
+                translate(lang, "meta_license_Public_Domain"),
+                translate(lang, "meta_license_Public_Domain_description")),
+               ('Unlicense',
+                translate(lang, "meta_license_Unlicense"),
+                translate(lang, "meta_license_Unlicense_description")),
+               ('NOSA_1.3',
+                translate(lang, "meta_license_NOSA_1.3"),
+                translate(lang, "meta_license_NOSA_1.3_description")),
+               ),
+    )
+
+    def _meta_license_custom_update(self, context):
+        if self.file_unit != 'CUSTOM':
+            return
+        self.license = self.meta_license_custom
+    meta_license_custom: StringProperty(
+        name=translate(lang, "meta_license_custom"),
+        default="",
+        description=translate(lang, "meta_license_custom_description"),
+        update = _meta_license_custom_update,
     )
 
     @property
@@ -342,11 +460,14 @@ class ExportX3D(bpy.types.Operator, ExportHelper):
                                             "global_scale",
                                             "check_existing",
                                             "filter_glob",
+                                            "meta_license_custom",
                                             ))
         global_matrix = axis_conversion(to_forward=self.axis_forward,
                                         to_up=self.axis_up,
                                         ).to_4x4() @ Matrix.Scale(self.global_scale, 4)
         keywords["global_matrix"] = global_matrix
+        if self.meta_license == 'CUSTOM' and self.meta_license_custom:
+            keywords["meta_license"] = self.meta_license_custom
 
         return export_x3d.save(context, **keywords)
 
@@ -359,6 +480,7 @@ class ExportX3D(bpy.types.Operator, ExportHelper):
         export_ui_transform(layout, self)
         export_ui_mesh(layout, self)
         export_ui_external_resource(layout, self)
+        export_ui_meta_data(layout, self)
 
 def export_ui_include(layout, operator):
     header, body = layout.panel("EXPORT_SCENE_OT_x3d_include", default_closed=False)
@@ -423,6 +545,27 @@ def export_ui_external_resource(layout, operator):
     if body:
         line = body.row(align=True)
         line.prop(operator, "path_mode")
+
+def export_ui_meta_data(layout, operator):
+    header, body = layout.panel("EXPORT_SCENE_OT_x3d_meta_data", default_closed=True)
+    header.label(text=translate(lang, "label_meta_data"))
+    if body:
+        line = body.row(align=True)
+        line.prop(operator, "meta_creator")
+        line = body.row(align=True)
+        line.prop(operator, "meta_title")
+        line = body.row(align=True)
+        line.prop(operator, "meta_description")
+        line = body.row(align=True)
+        line.prop(operator, "meta_keywords")
+        line = body.row(align=True)
+        line.prop(operator, "meta_reference")
+        line = body.row(align=True)
+        line.prop(operator, "meta_license")
+
+        sub = body.row(align=True)
+        sub.enabled = operator.meta_license == 'CUSTOM'
+        sub.prop(operator, "meta_license_custom")
 
 
 class IO_FH_X3D(bpy.types.FileHandler):

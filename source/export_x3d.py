@@ -8,6 +8,7 @@
 # - Can't get the texture array associated with material * not the UV ones.
 
 import logging
+
 logger = logging.getLogger("export_x3d")
 
 import math
@@ -20,6 +21,7 @@ from bpy_extras.io_utils import create_derived_objects
 
 from .material_node_search import (imageTexture_in_material, get_diffuse_color, get_emissive_color,
                                    get_vector_mapping_properties, get_movie_texture_properties)
+from . import bl_info_copy
 
 # h3d defines
 H3D_TOP_LEVEL = 'TOP_LEVEL_TI'
@@ -213,6 +215,12 @@ def export(file,
            use_h3d=False,
            path_mode='COPY',
            name_decorations=True,
+           meta_creator=None,
+           meta_title=None,
+           meta_description=None,
+           meta_keywords=None,
+           meta_reference=None,
+           meta_license=None,
            ):
 
     if path_mode not in ("COPY", "RELATIVE", "STRIP"):
@@ -311,6 +319,8 @@ def export(file,
     # -------------------------------------------------------------------------
 
     def writeHeader(ident):
+        from datetime import datetime
+
         filepath_quoted = quoteattr(os.path.basename(file.name))
         blender_ver_quoted = quoteattr('Blender %s' % bpy.app.version_string)
 
@@ -325,9 +335,38 @@ def export(file,
         fw('%s<head>\n' % ident)
         ident += '\t'
         fw('%s<meta name="filename" content=%s />\n' % (ident, filepath_quoted))
+        if meta_title:
+            fw('%s<meta name="title" content="%s" />\n' % (ident, meta_title))
+        if meta_creator:
+            fw('%s<meta name="creator" content="%s" />\n' % (ident, meta_creator))
+            if not meta_license or meta_license == 'NONE':
+                fw('%s<meta name="copyright" content="(c) %s %s" />\n' % (ident, datetime.now().year, meta_creator))
+        if meta_description:
+            fw('%s<meta name="description" content="%s" />\n' % (ident, meta_description))
+        if meta_keywords:
+            fw('%s<meta name="keywords" content="%s" />\n' % (ident, meta_keywords))
+        if meta_reference:
+            fw('%s<meta name="reference" content="%s" />\n' % (ident, meta_reference))
+        if meta_license and meta_license != 'NONE':
+            from .translations import get_language, translate
+            lang = get_language()
+            license_name = translate(lang, "meta_license_%s" % meta_license).replace("meta_license_", "")
+            fw('%s<meta name="license" content="%s" />\n' % (ident, license_name))
+            if meta_creator:
+                content = "(c) %s %s. " % (datetime.now().year, meta_creator)
+                if meta_license in ['Standard_Royalty-Free', 'Extended_Commercial', 'CUSTOM']:
+                    content += "All rights reserved. Licensed under %s." % license_name
+                elif meta_license in ['Public_Domain']:
+                    content = "No rights reserved. This work is in the public domain."
+                elif meta_license in ['Unlicense']:
+                    content = "This work is released under The Unlicense. No rights reserved."
+                else:
+                    content += "Licensed under %s." % license_name
+                fw('%s<meta name="copyright" content="%s" />\n' % (ident, content))
+        fw('%s<meta name="created" content="%s" />\n' % (ident, datetime.now().isoformat(sep=" ", timespec="seconds")))
         fw('%s<meta name="generator" content=%s />\n' % (ident, blender_ver_quoted))
-        # this info was never updated, so blender version should be enough
-        # fw('%s<meta name="translator" content="X3D exporter v1.55 (2006/01/17)" />\n' % ident)
+        fw('%s<meta name="translator" content="%s v%s" />\n' %
+           (ident, bl_info_copy["name"], '.'.join(map(str,bl_info_copy["version"]))))
         ident = ident[:-1]
         fw('%s</head>\n' % ident)
         fw('%s<Scene>\n' % ident)
@@ -1779,7 +1818,13 @@ def save(context,
          path_mode='COPY',
          name_decorations=True,
          batch_mode='OFF',  # Options: 'OFF', 'COLLECTION', 'SCENE', 'OBJECT'
-         use_batch_own_dir=False  # Create separate directories for batch export
+         use_batch_own_dir=False,  # Create separate directories for batch export
+         meta_creator=None,
+         meta_title=None,
+         meta_description=None,
+         meta_keywords=None,
+         meta_reference=None,
+         meta_license=None,
          ):
     import os
 
@@ -1817,6 +1862,12 @@ def save(context,
                 use_h3d=use_h3d,
                 path_mode=path_mode,
                 name_decorations=name_decorations,
+                meta_creator=meta_creator,
+                meta_title=meta_title,
+                meta_description=meta_description,
+                meta_keywords=meta_keywords,
+                meta_reference=meta_reference,
+                meta_license=meta_license,
             )
 
     base_dir = os.path.dirname(filepath)
