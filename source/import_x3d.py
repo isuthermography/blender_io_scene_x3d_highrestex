@@ -3350,7 +3350,7 @@ def importText(geom, ancestry):
         horizontal_alignment = fmt.getFieldAsString("justify", 1, ancestry)
         line_height = fmt.getFieldAsFloat("spacing", 1, ancestry)
         style = fmt.getFieldAsString("style", None, ancestry)
-        family = fmt.getFieldAsString("family", None, ancestry)
+        family = fmt.getFieldAsMFStringArray("family", None, ancestry)
     else:
         size = 1
         horizontal_alignment = "BEGIN"
@@ -3397,28 +3397,43 @@ def importText(geom, ancestry):
 
     # search for and set font family
     if family is not None:
-        font_path = search_for_font_file(family)
-        if font_path is not None:
-            if font_path["regular"] not in bpy.data.fonts:
-                font_regular = bpy.data.fonts.load(font_path["regular"])
+        # user may provide multiple fonts, choose the first valid one
+        for font in family:
+            # convert x3d defaults to system fonts
+            if font.upper() == "SANS":
+                font = "Arial"
+            elif font.upper() == "SERIF":
+                font = "Times New Roman"
+            elif font.upper() == "TYPEWRITER":
+                font = "Courier New"
             else:
-                font_regular = bpy.data.fonts[font_path["regular"]]
-            if font_path["bold"] not in bpy.data.fonts:
-                font_bold = bpy.data.fonts.load(font_path["bold"])
-            else:
-                font_bold = bpy.data.fonts[font_path["bold"]]
-            if font_path["italic"] not in bpy.data.fonts:
-                font_italic = bpy.data.fonts.load(font_path["italic"])
-            else:
-                font_italic = bpy.data.fonts[font_path["italic"]]
-            if font_path["bold_italic"] not in bpy.data.fonts:
-                font_bolditalic = bpy.data.fonts.load(font_path["bold_italic"])
-            else:
-                font_bolditalic = bpy.data.fonts[font_path["bold_italic"]]
-            bpytext.font = font_regular
-            bpytext.font_bold = font_bold
-            bpytext.font_italic = font_italic
-            bpytext.font_bold_italic = font_bolditalic
+                # our search works without extensions, so they need to get removed if provided by the user
+                for extension in [".ttf", ".otf", ".woff", ".woff2"]:
+                    font = ''.join(font.rsplit(extension, maxsplit=1))
+            font_path = search_for_font_file(font)
+            if font_path:
+                if font_path is not None:
+                    if font_path["regular"] not in bpy.data.fonts:
+                        font_regular = bpy.data.fonts.load(font_path["regular"])
+                    else:
+                        font_regular = bpy.data.fonts[font_path["regular"]]
+                    if font_path["bold"] not in bpy.data.fonts:
+                        font_bold = bpy.data.fonts.load(font_path["bold"])
+                    else:
+                        font_bold = bpy.data.fonts[font_path["bold"]]
+                    if font_path["italic"] not in bpy.data.fonts:
+                        font_italic = bpy.data.fonts.load(font_path["italic"])
+                    else:
+                        font_italic = bpy.data.fonts[font_path["italic"]]
+                    if font_path["bold_italic"] not in bpy.data.fonts:
+                        font_bolditalic = bpy.data.fonts.load(font_path["bold_italic"])
+                    else:
+                        font_bolditalic = bpy.data.fonts[font_path["bold_italic"]]
+                    bpytext.font = font_regular
+                    bpytext.font_bold = font_bold
+                    bpytext.font_italic = font_italic
+                    bpytext.font_bold_italic = font_bolditalic
+                    break
 
     return bpytext
 
@@ -3476,26 +3491,29 @@ def search_for_font_file(font_name_spec):
         def find_font_by_style(indexed_font_files, font_name_str, keywords, allow_no_keyword=False):
             """Search for a specific style of font in the provided files list."""
 
-            # Case A: Exact match without keyword (only if `allow_no_keyword` is True)
-            # this will hopefully always find the regular font variant
-            if allow_no_keyword:
+            lower_font = font_name_str.lower()
+
+            for fuzzy_font in [lower_font, lower_font[:5], lower_font[:4]]:
+                # Case A: Exact match without keyword (only if `allow_no_keyword` is True)
+                # this will hopefully always find the regular font variant
+                if allow_no_keyword:
+                    for font in indexed_font_files:
+                        if Path(font).stem.lower() == fuzzy_font:
+                            return font
+
+                # Case B: Exact match with style keyword in the filename
+                # this will most likely find all font variants
+                for font in font_files:
+                    for keyword in keywords:
+                        if Path(font).stem.lower() == (fuzzy_font + keyword):
+                            return font
+
+                # Case C: Name and style keyword somewhere in the filename
+                # not ideal, but a fallback to get a somewhat similar font (at least by name)
                 for font in indexed_font_files:
-                    if Path(font).stem.lower() == font_name_str.lower():
+                    if fuzzy_font in Path(font).stem.lower() and \
+                        any(keyword in Path(font).stem.lower() for keyword in keywords):
                         return font
-
-            # Case B: Exact match with style keyword in the filename
-            # this will most likely find all font variants
-            for font in font_files:
-                for keyword in keywords:
-                    if Path(font).stem.lower() == (font_name + keyword).lower():
-                        return font
-
-            # Case C: Name and style keyword somewhere in the filename
-            # not ideal, but a fallback to get a somewhat similar font (at least by name)
-            for font in indexed_font_files:
-                if font_name_str.lower() in Path(font).stem.lower() and \
-                    any(keyword in Path(font).stem.lower() for keyword in keywords):
-                    return font
 
             return None
 
