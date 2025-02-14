@@ -728,7 +728,12 @@ class vrmlNode(object):
         # print(ret)
 
         if ret:
-            return ret
+            # check integrity of the result compared to default expected value. If corrupted, discard to ensure further working
+            if default:
+                if len(ret) == len(default):
+                    return ret
+            else:
+                return ret
         if not ret:
             print('\tvalue "%s" could not be used as a float tuple for field "%s"' % (f, field))
             return default
