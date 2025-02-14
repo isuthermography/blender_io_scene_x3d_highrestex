@@ -1681,15 +1681,27 @@ def importMesh_ApplyColors(bpymesh, geom, ancestry):
             # Array of arrays; no need to flatten
             rgb = [c + [1.0] for c in colors.getFieldAsArray('color', 3, ancestry)]
 
-        if len(rgb) == len(bpymesh.vertices):
+        rgb_overflow_warning = "WARNING vertex colors applied with non matching numbers of vertices or loops (rgb colors too big)"
+        rgb_len = len(rgb)
+        vertices_len = len(bpymesh.vertices)
+        loops_len = len(bpymesh.loops)
+        # usually we want an exact length match, however some files are corrupted
+        # having more color values is not critical, but we need to ensure that neither verts nor loops are exact matches
+        if rgb_len >= vertices_len and rgb_len != loops_len:
+            if rgb_len > vertices_len:
+                rgb = rgb[:vertices_len]
+                print(rgb_overflow_warning)
             rgb = [rgb[l.vertex_index] for l in bpymesh.loops]
             rgb = tuple(chain(*rgb))
-        elif len(rgb) == len(bpymesh.loops):
+        elif rgb_len >= loops_len:
+            if rgb_len > loops_len:
+                rgb = rgb[:loops_len]
+                print(rgb_overflow_warning)
             rgb = tuple(chain(*rgb))
         else:
             print(
                 "WARNING not applying vertex colors, non matching numbers of vertices or loops (%d vs %d/%d)" %
-                (len(rgb), len(bpymesh.vertices), len(bpymesh.loops))
+                (rgb_len, vertices_len, loops_len)
             )
             return
 
@@ -2826,17 +2838,27 @@ def appearance_CreateMaterial(vrmlname, mat, ancestry, is_vcol):
     # Given an X3D material, creates a Blender material.
     # texture is applied later, in appearance_Create().
     # All values between 0.0 and 1.0, defaults from VRML docs.
-    mat_name = mat.getDefName()
+    if mat:
+        mat_name = mat.getDefName()
+        diff_color = mat.getFieldAsFloatTuple('diffuseColor', [0.8, 0.8, 0.8], ancestry)
+        emit_color = mat.getFieldAsFloatTuple('emissiveColor', [0.0, 0.0, 0.0], ancestry)
+        shininess = mat.getFieldAsFloat('shininess', 0.2, ancestry)
+        alpha = 1.0 - mat.getFieldAsFloat('transparency', 0.0, ancestry)
+        # TODO: handle 'ambientIntensity'.
+        # ambient = mat.getFieldAsFloat('ambientIntensity', 0.2, ancestry)
+        # TODO: handle 'specularColor'.
+        # specular_color = mat.getFieldAsFloatTuple('specularColor', [0.0, 0.0, 0.0], ancestry)
+    else: # object with no appearance node (e.g. only vertex colors), thus use default diffuse material
+        mat_name = None
+        diff_color = [0.8, 0.8, 0.8]
+        emit_color = [0.0, 0.0, 0.0]
+        shininess = 0.2
+        alpha = 1.0
+
     bpymat = bpy.data.materials.new(mat_name if mat_name else vrmlname)
     bpymat_wrap = node_shader_utils.PrincipledBSDFWrapper(bpymat, is_readonly=False)
 
-    # TODO: handle 'ambientIntensity'.
-    # ambient = mat.getFieldAsFloat('ambientIntensity', 0.2, ancestry)
-
-    diff_color = mat.getFieldAsFloatTuple('diffuseColor', [0.8, 0.8, 0.8], ancestry)
     bpymat_wrap.base_color = diff_color
-
-    emit_color = mat.getFieldAsFloatTuple('emissiveColor', [0.0, 0.0, 0.0], ancestry)
     bpymat_wrap.emission_color = emit_color
     # set emission strength to 1 if there is an emissive color
     if emit_color != [0.0, 0.0, 0.0]:
@@ -2846,21 +2868,16 @@ def appearance_CreateMaterial(vrmlname, mat, ancestry, is_vcol):
             bsdf_node.inputs["Emission Strength"].default_value = 1.0
 
     # NOTE - 'shininess' is being handled as 1 - roughness for now.
-    shininess = mat.getFieldAsFloat('shininess', 0.2, ancestry)
     bpymat_wrap.roughness = 1.0 - shininess
 
     # bpymat.specular_hardness = int(1 + (510 * shininess))
     # 0-1 -> 1-511
-    # TODO: handle 'specularColor'.
-    # specular_color = mat.getFieldAsFloatTuple('specularColor',
-    #                                          [0.0, 0.0, 0.0], ancestry)
 
-    alpha = 1.0 - mat.getFieldAsFloat('transparency', 0.0, ancestry)
     bpymat_wrap.alpha = alpha
     if alpha < 1.0:
         bpymat.surface_render_method = "BLENDED"
 
-    if is_vcol:
+    if is_vcol: # fun fact: this little beast can exist without appearance node in x3d ffs
         node_vertex_color = bpymat.node_tree.nodes.new("ShaderNodeVertexColor")
         node_vertex_color.location = (-200, 300)
         node_vertex_color.layer_name = "ColorPerCorner"
@@ -3640,6 +3657,11 @@ def importShape(bpycollection, node, ancestry, global_matrix, solidify, solidify
         textx = appr.getChildBySpec('TextureTransform')
         if textx:
             texmtx = translateTexTransform(textx, ancestry)
+    elif is_vcol:
+        # this may be a rare case, however sometimes vertex colors get used without material
+        # in such case a default material has to get forced
+        # for example https://projects.blender.org/extensions/io_scene_x3d/issues/70
+        bpymat = appearance_CreateMaterial(vrmlname, None, ancestry, is_vcol).material
 
     bpydata = None
     geom_spec = geom.getSpec()
