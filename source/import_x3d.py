@@ -2084,7 +2084,8 @@ def importMesh_IndexedFaceSet(geom, ancestry):
         has_valid_color_index = index.count(-1) == color_index.count(-1)
 
         # rebuild a corrupted colorIndex field (assuming the end of face markers -1 are missing)
-        if has_color_index and not has_valid_color_index:
+        # this is only needed for vertex colors, for face colors not as each value is its own face
+        if color_per_vertex and has_color_index and not has_valid_color_index:
             # remove all -1 beforehand to ensure clean working copy
             color_index = [x for x in color_index if x != -1]
             # copy all -1 from coordIndex to colorIndex
