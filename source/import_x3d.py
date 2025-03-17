@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import logging
+from http.cookiejar import debug
+
 logger = logging.getLogger("import_x3d")
 
 DEBUG = False
@@ -28,34 +30,37 @@ EPSILON = 0.0000001  # Very crude.
 
 
 def vrml_find_quote(text,j=0):
+    """Finds the next unescaped quote (") in a VRML-encoded string.
+
+    This function accounts for VRML escaping rules, which allow quotes (") and
+    backslashes (\\) to be included in SFString values.
+
+    Args:
+        text (str): The input string to search.
+        j (int, optional): The starting index. Defaults to 0.
+
+    Returns:
+        int: The index of the next unescaped quote, or -1 if none is found.
+
+    Notes:
+        - If `text[j] == '"'`, the function returns `j` (handling empty VRML strings).
+        - If an escaped quote (`\"`) or backslash (`\\`) is encountered, it is skipped.
+        - For strict VRML syntax enforcement, an exception could be raised
+          if an isolated backslash (`\`) is found.
+
+    See:
+    https://www.web3d.org/documents/specifications/19776-2/V3.3/Part02/EncodingOfFields.html#SFString
     """
-    This function is a replacement for the invocation
-    i = text.find('"', i)
-    which takes into account VRML escaping rules that allow
-    including quotes and backslash characters in SFString values
-
-    i is an index in data pointing after the occurrence of "
-    that starts an encoded SFString
-    the retval will be the index of next " which is not escaped
-    if text[i]=='"' then i will be the return value, this will occur for
-    a VRML empty string.
-
-    return value will be -1 if '"''
-
-    See  https://www.web3d.org/documents/specifications/19776-2/V3.3/Part02/EncodingOfFields.html#SFString
-    """
-
     while j < len(text):
-        if text[j] == r'"':
+        if text[j] == '"':
             return j
-        next_pair=text[j:j+2]
-        if next_pair == r'\"' or next_pair==r'\\':
-            j=j+2
-            continue
-        # at this point if we wanted to do strict VRML syntax enforcement
-        # we would raise an exception of data[j]=='\'
-        j=j+1
+        if text[j:j + 2] in {'\\"', '\\\\'}:
+            j += 2  # Skip escaped characters
+        else:
+            j += 1  # Move to the next character
+
     return -1
+
 
 def vrml_count_quote(text):
     """
@@ -71,8 +76,8 @@ def vrml_count_quote(text):
     is not terminated in a line
     """
     returnCount = 0
-    j=0
-    LOOP_GUARD=64
+    j = 0
+    LOOP_GUARD = 64
     while j < len(text):
         LOOP_GUARD -= 1
         if LOOP_GUARD < 0:
@@ -95,56 +100,51 @@ def vrml_count_quote(text):
 # The regex pattern for splitting items in a line
 # is either a single comma and optional whitespace, or at least one whitespace
 # followed by optional comma and whitespace
-vrml_split_pattern=re.compile(r"(?:,\s*)|(?:\s+,?\s*)")
+vrml_split_pattern = re.compile(r"(?:,\s*)|(?:\s+,?\s*)")
 def vrml_split(text):
-    """
-    argument text is a string
-    returns a list of strings.
+    """Splits a VRML-encoded string into a list of words or SFString values.
 
-    or a string with no embedded whitespace
-    """
-    saved_text = text
-    retVal = []
+        Args:
+            text (str): The input string.
 
+        Returns:
+            list: A list of strings where:
+                - Items enclosed in quotes are treated as SFString values (quotes included).
+                - Other items are split by whitespace.
+            or a string with no embedded whitespace
 
-    textlen = None
-    while len(text) > 0:
-        # this test compares the length of text to what item
-        # was in the previous pass and throws an exception if it
-        # hasn't gotten any shorter
-        if textlen and len(text) >= textlen:
-            raise Exception("infinite loop in vrml_split")
-        else:
-            textlen=len(text)
+        Notes:
+            - Ensures proper handling of quoted SFString values.
+            - Detects and prevents infinite loops by checking text length changes.
+            - Logs an error if an unterminated quoted string is encountered.
+        """
+    original_text = text
+    result = []
+    prev_length = None
 
-        init_match = vrml_split_pattern.match(text)
-        if init_match:
-            # strip off the leading whitespace/comma
-            text = text[init_match.end():]
+    while text:
+        if prev_length is not None and len(text) >= prev_length:
+            raise Exception("Infinite loop detected in vrml_split")
+        prev_length = len(text)
+
+        text = text[vrml_split_pattern.match(text).end():] if vrml_split_pattern.match(text) else text
         if not text:
             break
 
-        if text[0] == '"':
-            end_i = vrml_find_quote(text,1)
-            if end_i == -1:
-                logger.error("unterminated sfstring value: |%s|" % text)
+        if text.startswith('"'):
+            end_idx = vrml_find_quote(text, 1)
+            if end_idx == -1:
+                logger.error("Unterminated SFString value: |%s|", text)
                 break
-            else:
-                retVal.append( text[0:end_i+1]) # enclosing quotes included
-                text=text[end_i+1:]
+            result.append(text[:end_idx + 1])
+            text = text[end_idx + 1:]
         else:
-            split_one_match = vrml_split_pattern.search(text)
-            if split_one_match:
-                retVal.append(text[:split_one_match.start()])
-                text=text[split_one_match.end():]
-            else:
-                retVal.append(text)
-                text=''
-    logger.debug("vrml_split |%s| --> %s" % (saved_text,retVal) )
-    return retVal
+            match = vrml_split_pattern.search(text)
+            result.append(text[:match.start()] if match else text)
+            text = text[match.end():] if match else ''
 
-
-
+    logger.debug("vrml_split |%s| --> %s", original_text, result)
+    return result
 
 
 def imageConvertCompat(path):
@@ -249,6 +249,10 @@ def vrmlFormat(data):
 
     if EXTRACT_STRINGS:
 
+        # removed in PR #81
+        # We need this so we can detect URL's
+        # data = '\n'.join([' '.join(l.split()) for l in data.split('\n')])  # remove all whitespace
+
         string_ls = []
 
         # search = 'url "'
@@ -256,8 +260,6 @@ def vrmlFormat(data):
 
         ok = True
         last_i = 0
-
-
 
         while ok:
             ok = False
@@ -380,6 +382,7 @@ def is_nodeline(i, words):
     node_type, new_i = getNodePreText(i, words)
 
     if not node_type:
+        logger.debug("not node_type", lines[i])
         return 0, 0
 
     # Ok, we have a { after some values
@@ -407,7 +410,6 @@ def is_numline(i):
     then look forward for a comma or white space
     try to parse whats inside as a float
     """
-    import re
     l = lines[i]
 
     init_skip = is_numline_init_skip_pattern.match(l)
@@ -415,7 +417,7 @@ def is_numline(i):
         first_break = is_numline_first_break_pattern.search(l, init_skip.end())
         if first_break:
             try:
-                float( l[init_skip.end():first_break.start()])
+                float(l[init_skip.end():first_break.start()])
                 return True
             except:
                 pass
@@ -627,11 +629,11 @@ class vrmlNode(object):
                 if child.getProtoName() is None and child.getExternprotoName() is None:
                     child.getSerialized(results, ancestry)
                 else:
+                    logger.debug('getSerialized() is proto:', child.getProtoName(), child.getExternprotoName(), self.getSpec())
                     self_spec = self.getSpec()
 
                     if child.getProtoName() == self_spec or child.getExternprotoName() == self_spec:
-                        # if DEBUG:
-                        #    "FoundProto!"
+                        logger.debug("FoundProto!")
                         child.getSerialized(results, ancestry)
 
         return results
@@ -687,10 +689,13 @@ class vrmlNode(object):
                             for f_def in node.fields:
                                 if len(f_def) >= 2:
                                     if f_def[0] == field_id:
+                                        logger.debug("getFieldName(), found proto", f_def)
                                         f_proto_lookup = f_def[1:]
 
                     if AS_CHILD:
                         if f_proto_child_lookup:
+                            logger.debug("getFieldName() - AS_CHILD=True, child found")
+                            logger.debug(f_proto_child_lookup)
                             return f_proto_child_lookup
                     else:
                         return f_proto_lookup
@@ -931,13 +936,14 @@ class vrmlNode(object):
 
         logger.debug("getFieldAsStringArray child\n%r" % child)
         # each string gets its own list, remove ""'s
+        new_array = []
         try:
             for j,f in enumerate(child_array.fields):
                 logger.debug("getFieldAsStringArray field %s subfield %i value %r" % (field, j, f))
             try:
                 new_array = [mfstring.slash_decode(f[1:-1]) for f in child_array.fields]
             except:
-                new_array=[]
+                new_array = []
                 raise
         except mfstring.SlashEncodingError as exc:
             logger.warning(str(exc))
@@ -1089,6 +1095,7 @@ class vrmlNode(object):
         # Was either an Inline or an EXTERNPROTO
         if url_ls:
             for url, extern_key in url_ls:
+                logger.debug(url)
                 urls = []
                 urls.append(url)
                 urls.append(bpy.path.resolve_ncase(urls[-1]))
@@ -1150,6 +1157,7 @@ class vrmlNode(object):
                                     if extern_child:
                                         self.children.append(extern_child)
                                         extern_child.parent = self
+                                        logger.debug("\tEXTERNPROTO ID found!:", extern_key)
                                     else:
                                         logger.warning("EXTERNPROTO ID not found!: %s" % extern_key)
 
@@ -1274,8 +1282,8 @@ class vrmlNode(object):
                         # is a collection of encoded sfstring values (enclosed by quotes)
                         stripped_line=l.strip()
 
-                        if stripped_line and stripped_line[0]=='"':
-                            for str_item in vrml_split( stripped_line ):
+                        if stripped_line and stripped_line[0] == '"':
+                            for str_item in vrml_split(stripped_line):
                                 if str_item[0] == '"' and str_item[-1] == '"':
                                     self.fields.append(str_item)
                                 else:
@@ -1289,7 +1297,7 @@ class vrmlNode(object):
                         quote_count = vrml_count_quote(l)
                         if (quote_count % 2) == 1:  # odd number, indicating unterminated VRML string
                             logger.info("__parse: handling multiline VRML string")
-                            accumulated_lines=l
+                            accumulated_lines = l
                             logger.debug("accumulated_line: %i \n %s" % (quote_count,accumulated_lines) )
                             LOOP_GUARD = 4
 
@@ -1521,7 +1529,7 @@ def x3d_parse(path):
     parser = xml.sax.make_parser()
     orig_set_content_handler = parser.setContentHandler
     parser.setFeature(handler.feature_external_ges, False)
-    parser.setFeature(handler.feature_external_pes, False )
+    parser.setFeature(handler.feature_external_pes, False)
     parser.setContentHandler = set_content_handler
 
     doc = xml.dom.minidom.parseString(data, parser)
@@ -1727,7 +1735,7 @@ def importMesh_ApplyColors(bpymesh, geom, ancestry):
         else:
             logger.warning(
                 "Not applying vertex colors, non matching numbers of vertices or loops (%d vs %d/%d)" %
-                (len(rgb), len(bpymesh.vertices), len(bpymesh.loops))
+                (rgb_len, vertices_len, loops_len)
             )
             return
 
