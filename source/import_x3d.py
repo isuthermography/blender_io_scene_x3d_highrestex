@@ -1821,6 +1821,22 @@ def importMesh_ApplyTextureToLoops(bpymesh, loops):
 def flip(r, ccw):
     return r if ccw else r[::-1]
 
+def validate_points_field(coord_index, points):
+    """
+    validate number of points compared to coordIndex to ensure proper face building without errors
+    """
+    for f in coord_index:
+        missing_point = False
+        for v in f:
+            try:
+                points[v]
+            except IndexError:
+                missing_point = True
+                points.extend([(0, 0, 0)] * (v - len(points) + 1))
+        if missing_point:
+            logger.warning("More coordIndex than points found")
+    return points
+
 # -----------------------------------------------------------------------------------
 # Now specific geometry importers
 
@@ -2052,6 +2068,8 @@ def importMesh_IndexedFaceSet(geom, ancestry):
 
     if cull:
         points = culled_points
+
+    points = validate_points_field(faces, points)
 
     bpymesh = bpy.data.meshes.new(name="IndexedFaceSet")
     bpymesh.from_pydata(points, [], faces)
@@ -2589,8 +2607,15 @@ def importMesh_IndexedLineSet(geom, ancestry):
         # co = points[line[0]]  # UNUSED
         nu = bpycurve.splines.new('POLY')
         nu.points.add(len(line) - 1)  # the new nu has 1 point to begin with
+        missing_point = False
         for il, pt in zip(line, nu.points):
-            pt.co[0:3] = points[il]
+            try:
+                pt.co[0:3] = points[il]
+            except IndexError:
+                missing_point = True
+                pass
+        if missing_point:
+            logger.warning("More coordIndex than points found")
 
     return bpycurve
 
