@@ -3443,24 +3443,29 @@ def importText(geom, ancestry):
     bpytext.body = "\n".join(body)
     bpytext.size = size
     bpytext.space_line = line_height
-    if horizontal_alignment == "BEGIN":
-        bpytext.align_x = "LEFT"
-    elif horizontal_alignment == "MIDDLE":
-        bpytext.align_x = "CENTER"
-    elif horizontal_alignment == "END":
-        bpytext.align_x = "RIGHT"
+    for align in horizontal_alignment:
+        if align == "BEGIN":
+            bpytext.align_x = "LEFT"
+            break
+        elif align == "MIDDLE":
+            bpytext.align_x = "CENTER"
+            break
+        elif align == "END":
+            bpytext.align_x = "RIGHT"
+            break
 
     # set style as temp attribute for later, as we need an object to set it
     bpytext["bold"] = False
     bpytext["italic"] = False
     if style is not None:
-        if style == "BOLD":
-            bpytext["bold"] = True
-        elif style == "ITALIC":
-            bpytext["italic"] = True
-        elif style == "BOLDITALIC":
-            bpytext["bold"] = True
-            bpytext["italic"] = True
+        for s in style:
+            if s == "BOLD":
+                bpytext["bold"] = True
+            elif s == "ITALIC":
+                bpytext["italic"] = True
+            elif s == "BOLDITALIC":
+                bpytext["bold"] = True
+                bpytext["italic"] = True
 
     # search for and set font family
     if family is not None:
