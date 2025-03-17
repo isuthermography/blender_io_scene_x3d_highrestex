@@ -3,6 +3,12 @@
 > Note: These release notes are also published on the extensions page and contain the most important changes of each release.
 > For more detailed info view the commit history.
 
+### v2.5.1
+- fixes (import):
+  - color per face is now a separate case again compared to vertex color
+  - quotes, backslashes and leading spaces in text objects get parsed correctly, a new mfstring handler got implemented which also results in same results for x3d and vrml
+  - IndexedShape Import is more fault tolerant: less points than coordIndex doesn't lead to an error anymore
+
 ### v2.5.0
 - features:
   - batch export options
