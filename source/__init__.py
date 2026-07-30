@@ -315,6 +315,17 @@ class ExportX3D(bpy.types.Operator, ExportHelper):
         description=translate(lang, "scale_description"),
     )
 
+    vertcoord_precision: IntProperty(
+        name="Vertex coordinate precision",
+        min=1, max=12,
+        default=9,
+    )
+    texcoord_precision: IntProperty(
+        name="Texture coordinate precision",
+        min=1, max=12,
+        default=9,
+    )
+
     path_mode: EnumProperty(
         name=translate(lang, "path_mode_name"),
         description= translate(lang, "path_mode_description"),
@@ -586,11 +597,12 @@ class IO_FH_X3D(bpy.types.FileHandler):
 
 def menu_func_import(self, context):
     self.layout.operator(ImportX3D.bl_idname,
-                         text="X3D Extensible 3D (.x3d/.wrl)")
+                         text="X3D hires Extensible 3D (.x3d/.wrl)")
+
 
 def menu_func_export(self, context):
     self.layout.operator(ExportX3D.bl_idname,
-                         text="X3D Extensible 3D (.x3d)")
+                         text="X3D hires Extensible 3D (.x3d)")
 
 
 classes = (

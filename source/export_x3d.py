@@ -221,6 +221,8 @@ def export(file,
            meta_keywords=None,
            meta_reference=None,
            meta_license=None,
+           texcoord_precision=6,
+           vertcoord_precision=6,
            ):
 
     if path_mode not in ("COPY", "RELATIVE", "STRIP"):
@@ -880,7 +882,7 @@ def export(file,
                         fw('%s<Coordinate ' % ident)
                         fw('point="')
                         for x3d_v in vert_tri_list:
-                            fw('%.6f %.6f %.6f ' % mesh_vertices[x3d_v[1]].co[:])
+                            fw('%.*f %.*f %.*f ' % (vertcoord_precision,mesh_vertices[x3d_v[1]].co[0],vertcoord_precision,mesh_vertices[x3d_v[1]].co[1],vertcoord_precision,mesh_vertices[x3d_v[1]].co[2]))
                         fw('" />\n')
 
                         if use_normals or is_force_normals:
@@ -893,7 +895,7 @@ def export(file,
                         if is_uv:
                             fw('%s<TextureCoordinate point="' % ident)
                             for x3d_v in vert_tri_list:
-                                fw('%.4f %.4f ' % x3d_v[0][slot_uv])
+                                fw('%.*f %.*f ' % (texcoord_precision,x3d_v[0][slot_uv][0],texcoord_precision,x3d_v[0][slot_uv][1]))
                             fw('" />\n')
 
                         if is_col:
@@ -981,7 +983,7 @@ def export(file,
                                 fw('DEF=%s\n' % mesh_id_coords)
                                 fw(ident_step + 'point="')
                                 for v in mesh.vertices:
-                                    fw('%.6f %.6f %.6f ' % v.co[:])
+                                    fw('%.*f %.*f %.*f ' % (vertcoord_precision,v.co[0],vertcoord_precision,v.co[1],vertcoord_precision,v.co[2]))
                                 fw('"\n')
                                 fw(ident_step + '/>\n')
 
@@ -1001,7 +1003,7 @@ def export(file,
                             fw('%s<TextureCoordinate point="' % ident)
                             for i in polygons_group:
                                 for lidx in mesh_polygons[i].loop_indices:
-                                    fw('%.4f %.4f ' % mesh_loops_uv[lidx].uv[:])
+                                    fw('%.*f %.*f ' % (texcoord_precision,mesh_loops_uv[lidx].uv[0],texcoord_precision,mesh_loops_uv[lidx].uv[1]))
                             fw('" />\n')
 
                         if is_col:
@@ -1830,6 +1832,8 @@ def save(context,
          meta_keywords=None,
          meta_reference=None,
          meta_license=None,
+         texcoord_precision=6,
+         vertcoord_precision=6
          ):
     import os
 
@@ -1873,6 +1877,8 @@ def save(context,
                 meta_keywords=meta_keywords,
                 meta_reference=meta_reference,
                 meta_license=meta_license,
+                texcoord_precision=texcoord_precision,
+                vertcoord_precision=vertcoord_precision,
             )
 
     base_dir = os.path.dirname(filepath)
