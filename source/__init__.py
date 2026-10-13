@@ -31,6 +31,7 @@ from bpy.props import (
     BoolProperty,
     EnumProperty,
     FloatProperty,
+    IntProperty,
     StringProperty,
     CollectionProperty,
 )
